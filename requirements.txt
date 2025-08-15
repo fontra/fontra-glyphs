@@ -1,2 +1,2 @@
 git+https://github.com/googlefonts/fontra.git
-glyphsLib==6.11.0
+glyphsLib==6.11.4
