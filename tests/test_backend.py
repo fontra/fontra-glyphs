@@ -803,7 +803,7 @@ async def test_locationBaseWrite(writableTestFont):
     # glyphs that use locationBase. Some of this test code is about accounting
     # for the before/after differences. We _write_ a glyph using locationBase,
     # we _read_ one without it. Round-tripping should be perfect after
-    # https://github.com/googlefonts/fontra-glyphs/issues/89 has been implemented
+    # https://github.com/fontra/fontra-glyphs/issues/89 has been implemented
     # fully.
     glyphName = "q"  # Any glyph that doesn't exist yet
 
