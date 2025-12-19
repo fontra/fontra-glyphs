@@ -16,68 +16,67 @@
 ],
 "sources": [
 {
-"name": "Light",
+"name": "",
 "layerName": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE",
-"location": {
-"Weight": 17
-}
+"locationBase": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE"
 },
 {
 "name": "Light / NarrowShoulder",
 "layerName": "50EFFDD5-7E17-4ADC-BBC9-E16AAD6631DE",
 "location": {
-"Weight": 17,
 "shoulderWidth": 0
-}
+},
+"locationBase": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE"
 },
 {
 "name": "Light / LowCrotch",
 "layerName": "7C8F98EE-D140-44D5-86AE-E00A730464C0",
 "location": {
-"Weight": 17,
 "crotchDepth": -100
-}
+},
+"locationBase": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE"
 },
 {
-"name": "Regular",
-"layerName": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
+"name": "",
+"layerName": "3E7589AA-8194-470F-8E2F-13C1C581BE24",
+"locationBase": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
 },
 {
 "name": "Regular / NarrowShoulder",
 "layerName": "595FDB8C-ED41-486A-B76A-0FEFEF8BCDD1",
 "location": {
 "shoulderWidth": 0
-}
+},
+"locationBase": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
 },
 {
 "name": "Regular / LowCrotch",
 "layerName": "65575EEB-523C-4A39-985D-FB9ACFE951AF",
 "location": {
 "crotchDepth": -100
-}
+},
+"locationBase": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
 },
 {
-"name": "Bold",
+"name": "",
 "layerName": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA",
-"location": {
-"Weight": 220
-}
+"locationBase": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA"
 },
 {
 "name": "Bold / NarrowShoulder",
 "layerName": "D607B100-382C-478B-A297-2EF174C3A363",
 "location": {
-"Weight": 220,
 "shoulderWidth": 0
-}
+},
+"locationBase": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA"
 },
 {
 "name": "Bold / LowCrotch",
 "layerName": "BA4F7DF9-9552-48BB-A5B8-E2D21D8D086E",
 "location": {
-"Weight": 220,
 "crotchDepth": -100
-}
+},
+"locationBase": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA"
 }
 ],
 "layers": {

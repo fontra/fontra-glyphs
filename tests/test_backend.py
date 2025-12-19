@@ -250,8 +250,12 @@ async def test_createNewGlyph(writableTestFont):
     glyphName = "a.ss02"
     glyph = VariableGlyph(name=glyphName)
 
-    layerName = sourceNameMappingToIDs["Regular"]
-    glyph.sources.append(GlyphSource(name="Default", location={}, layerName=layerName))
+    layerName = masterId = sourceNameMappingToIDs["Regular"]
+    glyph.sources.append(
+        GlyphSource(
+            name="Default", location={}, locationBase=masterId, layerName=layerName
+        )
+    )
     glyph.layers[layerName] = Layer(glyph=StaticGlyph(xAdvance=333))
 
     await writableTestFont.putGlyph(glyphName, glyph, [])
@@ -267,18 +271,26 @@ async def test_createNewSmartGlyph(writableTestFont):
     glyphAxis = GlyphAxis(name="Height", minValue=0, maxValue=100, defaultValue=0)
     glyph = VariableGlyph(name=glyphName, axes=[glyphAxis])
 
+    sourceInfo = [
+        ("Light", {}, "Light"),
+        ("Light-Height", {"Height": 100}, "Light"),
+        ("Regular", {}, "Regular"),
+        ("Regular-Height", {"Height": 100}, "Regular"),
+        ("Bold", {}, "Bold"),
+        ("Bold-Height", {"Height": 100}, "Bold"),
+    ]
+
     # create a glyph with glyph axis
-    for sourceName, location in {
-        "Light": {"Weight": 17},
-        "Light-Height": {"Weight": 17, "Height": 100},
-        "Regular": {},
-        "Regular-Height": {"Height": 100},
-        "Bold": {"Weight": 220},
-        "Bold-Height": {"Weight": 220, "Height": 100},
-    }.items():
+    for sourceName, location, associatedSourceName in sourceInfo:
+        locationBase = sourceNameMappingToIDs[associatedSourceName]
         layerName = sourceNameMappingToIDs.get(sourceName) or str(uuid.uuid4()).upper()
         glyph.sources.append(
-            GlyphSource(name=sourceName, location=location, layerName=layerName)
+            GlyphSource(
+                name=sourceName if location else "",
+                location=location,
+                locationBase=locationBase,
+                layerName=layerName,
+            )
         )
         glyph.layers[layerName] = Layer(glyph=StaticGlyph(xAdvance=100))
 
@@ -799,15 +811,7 @@ sub @case_source by @case_target;
 
 
 async def test_locationBaseWrite(writableTestFont):
-    # TODO: This will have to be adjusted (simplified) once the backend emits
-    # glyphs that use locationBase. Some of this test code is about accounting
-    # for the before/after differences. We _write_ a glyph using locationBase,
-    # we _read_ one without it. Round-tripping should be perfect after
-    # https://github.com/fontra/fontra-glyphs/issues/89 has been implemented
-    # fully.
     glyphName = "q"  # Any glyph that doesn't exist yet
-
-    defaultLocation = {"Weight": 90}  # hard-coded because of axis.mapping laziness
 
     fontSources = await writableTestFont.getSources()
 
@@ -828,10 +832,8 @@ async def test_locationBaseWrite(writableTestFont):
     for (sourceIdentifier, fontSource), glyphSource in zip(
         fontSources.items(), savedGlyph.sources, strict=True
     ):
-        assert glyphSource.name == fontSource.name
-        assert (
-            defaultLocation | glyphSource.location == fontSource.location
-        ), glyphSource
+        assert glyphSource.name == ""
+        glyphSource.location == {}
 
     assert glyph.layers == savedGlyph.layers
 

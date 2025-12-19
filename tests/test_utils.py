@@ -114,8 +114,12 @@ async def test_splitLocation(
     testFont, gsLayerId, expectedFontLocation, expectedGlyphLocation
 ):
     glyph = await testFont.getGlyph("_part.shoulder")
+    fontSources = await testFont.getSources()
     glyphSource = getSourceFromLayerName(glyph.sources, gsLayerId)
-    fontLocation, glyphLocation = splitLocation(glyphSource.location, glyph.axes)
+    fontLocation = fontSources[glyphSource.locationBase].location
+    fontLocation, glyphLocation = splitLocation(
+        fontLocation | glyphSource.location, glyph.axes
+    )
     glyphLocation = makeDenseLocation(
         glyphLocation, {axis.name: axis.defaultValue for axis in glyph.axes}
     )

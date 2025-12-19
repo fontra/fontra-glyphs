@@ -37,7 +37,6 @@ from fontra.core.threading import runInThread
 from fontra.core.varutils import (
     locationToTuple,
     makeDenseLocation,
-    makeSparseLocation,
     mapAxesFromUserSpaceToSourceSpace,
 )
 from fontTools.designspaceLib import DesignSpaceDocument
@@ -569,14 +568,10 @@ class GlyphsBackend:
                 sourceName = gsLayer.name or masterName
             layerName = gsLayer.userData["xyz.fontra.layer-name"] or gsLayer.layerId
 
-            location = {
-                **makeSparseLocation(
-                    self.locationByMasterID[gsLayer.associatedMasterId],
-                    self.defaultLocation,
-                ),
-                **braceLocation,
-                **smartLocation,
-            }
+            baseLocation = self.locationByMasterID[gsLayer.associatedMasterId]
+            extraLocation = braceLocation | smartLocation
+            location = baseLocation | extraLocation
+            needLocationBase = not (set(extraLocation) >= set(self.defaultLocation))
 
             storeLayerId = True
             if location in seenLocations:
@@ -587,8 +582,15 @@ class GlyphsBackend:
                 seenLocations.append(location)
                 sources.append(
                     GlyphSource(
-                        name=sourceName,
-                        location=location,
+                        name=(
+                            sourceName
+                            if extraLocation or sourceName != masterName
+                            else ""
+                        ),
+                        location=extraLocation,
+                        locationBase=(
+                            gsLayer.associatedMasterId if needLocationBase else None
+                        ),
                         layerName=layerName,
                     )
                 )

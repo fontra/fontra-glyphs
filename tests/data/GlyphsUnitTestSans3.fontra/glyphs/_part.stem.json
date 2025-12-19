@@ -10,45 +10,43 @@
 ],
 "sources": [
 {
-"name": "Light",
+"name": "",
 "layerName": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE",
-"location": {
-"Weight": 17
-}
+"locationBase": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE"
 },
 {
 "name": "Light / TallStem",
 "layerName": "0D68D3E9-A0B2-4D78-A161-EB65D8511F0A",
 "location": {
-"Weight": 17,
 "height": 100
-}
+},
+"locationBase": "C4872ECA-A3A9-40AB-960A-1DB2202F16DE"
 },
 {
-"name": "Regular",
-"layerName": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
+"name": "",
+"layerName": "3E7589AA-8194-470F-8E2F-13C1C581BE24",
+"locationBase": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
 },
 {
 "name": "Regular / TallStem",
 "layerName": "3E1733D9-3B83-4E6A-B1E9-6381BBE1BD3A",
 "location": {
 "height": 100
-}
+},
+"locationBase": "3E7589AA-8194-470F-8E2F-13C1C581BE24"
 },
 {
-"name": "Bold",
+"name": "",
 "layerName": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA",
-"location": {
-"Weight": 220
-}
+"locationBase": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA"
 },
 {
 "name": "Bold / TallStem",
 "layerName": "FD65D427-9013-43E2-9F74-398D99AA4763",
 "location": {
-"Weight": 220,
 "height": 100
-}
+},
+"locationBase": "BFFFD157-90D3-4B85-B99D-9A2F366F03CA"
 }
 ],
 "layers": {
