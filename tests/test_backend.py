@@ -852,6 +852,31 @@ async def test_deleteGlyph(writableTestFont):
     assert glyph is None
 
 
+async def test_deleteGlyph_addGlyph(writableTestFont):
+    # This test (ab)uses the fact that the glyphMap order reveals the
+    # glyph order in the .glyphs or .glyphspackage file.
+
+    glyphName = "A"
+
+    glyphMap = await writableTestFont.getGlyphMap()
+    beforeGlyphOrder = list(glyphMap)
+    glyph = await writableTestFont.getGlyph(glyphName)
+
+    async with aclosing(writableTestFont):
+        await writableTestFont.deleteGlyph(glyphName)
+        await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
+
+    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    glyphMap = await reopened.getGlyphMap()
+    assert glyphName in glyphMap
+
+    glyph = await reopened.getGlyph(glyphName)
+    assert glyph is not None
+
+    afterGlyphOrder = list(glyphMap)
+    assert beforeGlyphOrder == afterGlyphOrder
+
+
 async def test_writeFontData_glyphspackage_empty_glyphs_list(tmpdir):
     tmpdir = pathlib.Path(tmpdir)
     srcPath = pathlib.Path(glyphsPackagePath)

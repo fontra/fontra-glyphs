@@ -131,6 +131,7 @@ class GlyphsBackend:
         self.rawGlyphsData = rawGlyphsData
 
         self._updateGlyphNameToIndex()
+        self.originalGlyphNameToIndex = dict(self.glyphNameToIndex)
 
         self.parsedGlyphNames: set[str] = set()
 
@@ -718,6 +719,12 @@ class GlyphsBackend:
         if isNewGlyph:
             assert glyphIndex == len(self.rawGlyphsData)
             self.rawGlyphsData.append(rawGlyphData)
+            self.rawGlyphsData.sort(
+                key=lambda glyphData: self.originalGlyphNameToIndex.get(
+                    glyphData["glyphname"], 0xFFFFFFFF
+                )
+            )
+            self._updateGlyphNameToIndex()
         else:
             self.rawGlyphsData[glyphIndex] = rawGlyphData
 
