@@ -859,6 +859,7 @@ async def test_deleteGlyph_addGlyph(writableTestFont):
     glyphName = "A"
 
     glyphMap = await writableTestFont.getGlyphMap()
+    beforeKerning = await writableTestFont.getKerning()
     beforeGlyphOrder = list(glyphMap)
     glyph = await writableTestFont.getGlyph(glyphName)
 
@@ -869,12 +870,14 @@ async def test_deleteGlyph_addGlyph(writableTestFont):
     reopened = getFileSystemBackend(writableTestFont.gsFilePath)
     glyphMap = await reopened.getGlyphMap()
     assert glyphName in glyphMap
+    afterKerning = await reopened.getKerning()
 
     glyph = await reopened.getGlyph(glyphName)
     assert glyph is not None
 
     afterGlyphOrder = list(glyphMap)
     assert beforeGlyphOrder == afterGlyphOrder
+    assert beforeKerning == afterKerning
 
 
 async def test_writeFontData_glyphspackage_empty_glyphs_list(tmpdir):
