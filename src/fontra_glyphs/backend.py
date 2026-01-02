@@ -714,6 +714,8 @@ class GlyphsBackend:
         gsGlyph.unicodes = [f"{codePoint:04X}" for codePoint in codePoints]
 
         rawGlyphData = self._getRawData(gsGlyph)
+        self._updateKerningSidesForGlyph(rawGlyphData)
+
         # Replace original "raw" object with new "raw" object
         glyphIndex = self.glyphNameToIndex[glyphName]
         if isNewGlyph:
@@ -840,6 +842,20 @@ class GlyphsBackend:
             else self.locationByMasterID[glyphSource.locationBase]
         )
         return baseLocation | glyphSource.location
+
+    def _updateKerningSidesForGlyph(self, rawGlyphData):
+        glyphName = rawGlyphData["glyphname"]
+        for pairSide, glyphSideAttr in self._kerningSideAttrs:
+            if pairSide not in self.kerningGroups:
+                continue
+            for groupName, glyphNames in self.kerningGroups[pairSide].items():
+                if glyphName in glyphNames:
+                    rawGlyphData[glyphSideAttr] = groupName
+
+        # sort dict by key for easier round-tripping
+        sortedData = {k: v for k, v in sorted(rawGlyphData.items())}
+        rawGlyphData.clear()
+        rawGlyphData.update(sortedData)
 
     def _writeRawFontData(self, changedGlyphs=None):
         # `changedGlyphs` is ignored, needed for glyphsPackage
