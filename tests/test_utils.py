@@ -172,8 +172,6 @@ def compareFilesByLines(pathA, pathB):
     linesB = pathB.read_text().splitlines()
 
     skipWords = [
-        "kernTop",
-        "kernBottom",
         "rememberToMakeCoffee",
         "bottomName",
         "topName",
