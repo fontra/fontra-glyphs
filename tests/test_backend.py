@@ -946,6 +946,8 @@ async def test_externalChanges(writableTestFont):
 
         kerning = await writableTestFont.getKerning()
         kerning["kern"].values["@A"]["@J"][1] = 999
+        if writableTestFont.gsFont.format_version == 2 and "vkrn" in kerning:
+            del kerning["vkrn"]
 
         features = await writableTestFont.getFeatures()
         features.text += "\n# TEST"
