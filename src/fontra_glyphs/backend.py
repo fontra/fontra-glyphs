@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import io
+import os
 import pathlib
 import uuid
 from collections import OrderedDict, defaultdict
@@ -11,6 +12,8 @@ from typing import Any
 
 import glyphsLib
 import openstep_plist
+from fontra.backends.filewatcher import Change
+from fontra.backends.watchable import WatchableBackend
 from fontra.core.classes import (
     Anchor,
     Axes,
@@ -102,7 +105,7 @@ GS_FORMAT_3_KERN_SIDES = [
 ]
 
 
-class GlyphsBackend:
+class GlyphsBackend(WatchableBackend):
     @classmethod
     def fromPath(cls, path: PathLike) -> WritableFontBackend:
         self = cls()
@@ -110,12 +113,12 @@ class GlyphsBackend:
         return self
 
     def __init__(self):
+        super().__init__()
         self._writeLock = asyncio.Lock()
 
     def _setupFromPath(self, path: PathLike) -> None:
-        self.path = path
         gsFont = glyphsLib.classes.GSFont()
-        self.gsFilePath = pathlib.Path(path)
+        self.path = pathlib.Path(path)
 
         rawFontData, rawGlyphsData = self._loadFiles(path)
 
@@ -128,13 +131,9 @@ class GlyphsBackend:
         self.gsFont.glyphs = [
             glyphsLib.classes.GSGlyph() for i in range(len(rawGlyphsData))
         ]
+
         self.rawFontData = rawFontData
-        self.rawGlyphsData = rawGlyphsData
-
-        self._updateGlyphNameToIndex()
-        self.originalGlyphNameToIndex = dict(self.glyphNameToIndex)
-
-        self.parsedGlyphNames: set[str] = set()
+        self._updateRawGlyphsData(rawGlyphsData)
 
         dsAxes = [
             dsAxis
@@ -154,8 +153,6 @@ class GlyphsBackend:
                     location[axisDef.name] = axisDef.get_design_loc(master)
             self.locationByMasterID[master.id] = location
             self.masterIDByLocationTuple[locationToTuple(location)] = master.id
-
-        self.glyphMap, self.kerningGroups = self._readGlyphMapAndKerningGroups()
 
         axis: FontAxis | DiscreteFontAxis
         axes: list[FontAxis | DiscreteFontAxis] = []
@@ -178,6 +175,13 @@ class GlyphsBackend:
         self.defaultLocation = {
             axis.name: axis.defaultValue for axis in axesSourceSpace
         }
+
+    def _updateRawGlyphsData(self, rawGlyphsData):
+        self.rawGlyphsData = rawGlyphsData
+        self._updateGlyphNameToIndex()
+        self.originalGlyphNameToIndex = dict(self.glyphNameToIndex)
+        self.parsedGlyphNames: set[str] = set()
+        self.glyphMap, self.kerningGroups = self._readGlyphMapAndKerningGroups()
 
     @staticmethod
     def _loadFiles(path: PathLike) -> tuple[dict[str, Any], list[Any]]:
@@ -865,7 +869,8 @@ class GlyphsBackend:
 
         rawFontData = convertMatchesToTuples(rawFontData, matchTreeFont)
         out = openstepPlistDumps(rawFontData)
-        self.gsFilePath.write_text(out)
+        self.path.write_text(out)
+        self.fileWatcherIgnoreNextChange(self.path)
 
     def _writeRawGlyph(self, glyphName, isNewGlyph):
         # Write whole file with openstep_plist
@@ -900,6 +905,53 @@ class GlyphsBackend:
                         usedBy.add(glyphData["glyphname"])
 
         return sorted(usedBy)
+
+    def fileWatcherWasInstalled(self):
+        self.fileWatcher.setPaths([self.path])
+
+    async def fileWatcherProcessChanges(
+        self, changes: set[tuple[Change, str]]
+    ) -> dict[str, Any] | None:
+        reloadPattern: dict[str, Any] = {}
+        glyphChanges = set()
+
+        rawFontData, rawGlyphsData = self._loadFiles(self.path)
+
+        # if rawFontData != self.rawFontData:
+        #     # RELOAD FONT INFO DATA
+
+        if rawGlyphsData != self.rawGlyphsData:
+            oldGlyphs = {
+                glyphData["glyphname"]: glyphData for glyphData in self.rawGlyphsData
+            }
+            newGlyphs = {
+                glyphData["glyphname"]: glyphData for glyphData in rawGlyphsData
+            }
+            oldGlyphsNames = set(oldGlyphs)
+            newGlyphsNames = set(newGlyphs)
+            glyphSetChanges = oldGlyphsNames ^ newGlyphsNames
+            glyphMapChanged = bool(glyphSetChanges)
+            glyphChanges = {
+                glyphName
+                for glyphName in oldGlyphsNames & newGlyphsNames
+                if oldGlyphs[glyphName] != newGlyphs[glyphName]
+            }
+            if not glyphMapChanged:
+                glyphMapChanged = any(
+                    oldGlyphs[glyphName].get("unicode")
+                    != newGlyphs[glyphName].get("unicode")
+                    for glyphName in glyphChanges
+                )
+
+            if glyphChanges:
+                self._updateRawGlyphsData(rawGlyphsData)
+                reloadPattern["glyphs"] = dict.fromkeys(
+                    sorted(glyphSetChanges | glyphChanges)
+                )
+                if glyphMapChanged:
+                    reloadPattern["glyphMap"] = None
+
+        return reloadPattern
 
 
 def getSourceLayerNames(variableGlyph):
@@ -1116,8 +1168,9 @@ class GlyphsPackageBackend(GlyphsBackend):
         rawFontData.pop("glyphs", None)
 
         out = openstepPlistDumps(rawFontData)
-        filePath = self.gsFilePath / "fontinfo.plist"
+        filePath = self.path / "fontinfo.plist"
         filePath.write_text(out, encoding="utf=8")
+        self.fileWatcherIgnoreNextChange(filePath)
 
         if changedGlyphs:
             for glyphName in sorted(changedGlyphs):
@@ -1129,6 +1182,7 @@ class GlyphsPackageBackend(GlyphsBackend):
         out = openstepPlistDumps(rawGlyphData)
         filePath = self.getGlyphFilePath(glyphName)
         filePath.write_text(out, encoding="utf=8")
+        self.fileWatcherIgnoreNextChange(filePath)
 
         if isNewGlyph:
             self._updateGlyphOrder()
@@ -1136,18 +1190,63 @@ class GlyphsPackageBackend(GlyphsBackend):
     def _updateDeletedGlyph(self, glyphName):
         filePath = self.getGlyphFilePath(glyphName)
         filePath.unlink()
+        self.fileWatcherIgnoreNextChange(filePath)
         self._updateGlyphOrder()
 
     def _updateGlyphOrder(self):
-        filePathGlyphOrder = self.gsFilePath / "order.plist"
+        filePathGlyphOrder = self.path / "order.plist"
         glyphOrder = [glyph["glyphname"] for glyph in self.rawGlyphsData]
         out = openstepPlistDumps(glyphOrder)
         filePathGlyphOrder.write_text(out, encoding="utf=8")
+        self.fileWatcherIgnoreNextChange(filePathGlyphOrder)
 
     def getGlyphFilePath(self, glyphName):
-        glyphsPath = self.gsFilePath / "glyphs"
+        glyphsPath = self.path / "glyphs"
         refFileName = userNameToFileName(glyphName, suffix=".glyph")
         return glyphsPath / refFileName
+
+    async def fileWatcherProcessChanges(
+        self, changes: set[tuple[Change, str]]
+    ) -> dict[str, Any] | None:
+        reloadPattern: dict[str, Any] = {}
+        glyphChanges = set()
+
+        orderPath = os.fspath(self.path / "order.plist")
+
+        shouldReloadAll = False
+
+        for change, path in sorted(changes):
+            fileName = os.path.basename(path)
+            stem, suffix = os.path.splitext(fileName)
+
+            # TODO fontinfo.plist
+
+            if fileName == orderPath:
+                reloadPattern["glyphMap"] = None
+                # self._readGlyphInfo()
+
+            if suffix == ".glyph" and os.path.isfile(path):
+                with open(path, "r") as fp:
+                    glyphData = openstep_plist.load(fp, use_numbers=True)
+                glyphName = glyphData["glyphname"]
+                glyphChanges.add(glyphName)
+                index = self.glyphNameToIndex.get(glyphName)
+                if index is None:
+                    pass
+                    # FIXME hmhm maybe we should ignore and wait for a change in the order file
+                    # self.rawGlyphsData.append(glyphData)
+                    # self._updateGlyphNameToIndex()
+                else:
+                    self.rawGlyphsData[index] = glyphData
+                self.parsedGlyphNames.discard(glyphName)
+
+        if shouldReloadAll:
+            return None
+
+        if glyphChanges:
+            reloadPattern["glyphs"] = dict.fromkeys(sorted(glyphChanges))
+
+        return reloadPattern
 
 
 def gsLayerToFontraLayer(gsLayer, globalAxisNames, gsLayerWidth, gsLayerId):
