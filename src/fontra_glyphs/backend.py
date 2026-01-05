@@ -1126,17 +1126,21 @@ def storeInDict(d, key, value, doStore):
 
 
 class GlyphsPackageBackend(GlyphsBackend):
+    fontInfoFileName = "fontinfo.plist"
+    orderFileName = "order.plist"
+    glyphsFolderName = "glyphs"
+
     @property
     def fontInfoPath(self):
-        return self.path / "fontinfo.plist"
+        return self.path / self.fontInfoFileName
 
     @property
     def orderPath(self):
-        return self.path / "order.plist"
+        return self.path / self.orderFileName
 
     @property
     def glyphsPath(self):
-        return self.path / "glyphs"
+        return self.path / self.glyphsFolderName
 
     def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
         glyphOrder = []
@@ -1173,9 +1177,8 @@ class GlyphsPackageBackend(GlyphsBackend):
         rawFontData.pop("glyphs", None)
 
         out = openstepPlistDumps(rawFontData)
-        filePath = self.path / "fontinfo.plist"
-        filePath.write_text(out, encoding="utf=8")
-        self.fileWatcherIgnoreNextChange(filePath)
+        self.fontInfoPath.write_text(out, encoding="utf=8")
+        self.fileWatcherIgnoreNextChange(self.fontInfoPath)
 
         if changedGlyphs:
             for glyphName in sorted(changedGlyphs):
@@ -1199,11 +1202,10 @@ class GlyphsPackageBackend(GlyphsBackend):
         self._updateGlyphOrder()
 
     def _updateGlyphOrder(self):
-        filePathGlyphOrder = self.path / "order.plist"
         glyphOrder = [glyph["glyphname"] for glyph in self.rawGlyphsData]
         out = openstepPlistDumps(glyphOrder)
-        filePathGlyphOrder.write_text(out, encoding="utf=8")
-        self.fileWatcherIgnoreNextChange(filePathGlyphOrder)
+        self.orderPath.write_text(out, encoding="utf=8")
+        self.fileWatcherIgnoreNextChange(self.orderPath)
 
     def getGlyphFilePath(self, glyphName):
         refFileName = userNameToFileName(glyphName, suffix=".glyph")
