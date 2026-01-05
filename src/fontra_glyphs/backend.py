@@ -930,13 +930,13 @@ class GlyphsBackend(WatchableBackend):
             newGlyphs = {
                 glyphData["glyphname"]: glyphData for glyphData in rawGlyphsData
             }
-            oldGlyphsNames = set(oldGlyphs)
-            newGlyphsNames = set(newGlyphs)
-            glyphSetChanges = oldGlyphsNames ^ newGlyphsNames
+            oldGlyphNames = set(oldGlyphs)
+            newGlyphNames = set(newGlyphs)
+            glyphSetChanges = oldGlyphNames ^ newGlyphNames
             glyphMapChanged = bool(glyphSetChanges)
             glyphChanges = {
                 glyphName
-                for glyphName in oldGlyphsNames & newGlyphsNames
+                for glyphName in oldGlyphNames & newGlyphNames
                 if oldGlyphs[glyphName] != newGlyphs[glyphName]
             }
             if not glyphMapChanged:
