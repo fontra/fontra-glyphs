@@ -918,8 +918,10 @@ class GlyphsBackend(WatchableBackend):
 
         rawFontData, rawGlyphsData = self._loadFiles()
 
-        # if rawFontData != self.rawFontData:
-        #     # RELOAD FONT INFO DATA
+        if rawFontData != self.rawFontData:
+            self._setupWithRawData(rawFontData, rawGlyphsData)
+            # Reload everything
+            return None
 
         if rawGlyphsData != self.rawGlyphsData:
             oldGlyphs = {
