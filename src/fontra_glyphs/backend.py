@@ -1221,8 +1221,6 @@ class GlyphsPackageBackend(GlyphsBackend):
         reloadPattern: dict[str, Any] = {}
         glyphChanges = set()
 
-        orderPath = os.fspath(self.orderPath)
-
         shouldReloadAll = False
 
         for change, path in sorted(changes):
@@ -1231,7 +1229,7 @@ class GlyphsPackageBackend(GlyphsBackend):
 
             # TODO fontinfo.plist
 
-            if fileName == orderPath:
+            if fileName == self.orderFileName:
                 reloadPattern["glyphMap"] = None
                 # self._readGlyphInfo()
 
