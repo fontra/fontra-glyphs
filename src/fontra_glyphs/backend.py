@@ -1227,11 +1227,19 @@ class GlyphsPackageBackend(GlyphsBackend):
             fileName = os.path.basename(path)
             stem, suffix = os.path.splitext(fileName)
 
-            # TODO fontinfo.plist
+            if fileName == self.fontInfoFileName:
+                shouldReloadAll = True
 
             if fileName == self.orderFileName:
-                reloadPattern["glyphMap"] = None
-                # self._readGlyphInfo()
+                with open(self.orderPath, "r", encoding="utf-8") as fp:
+                    glyphOrder = openstep_plist.load(fp)
+
+                oldGlyphNames = list(self.glyphNameToIndex)
+                newGlyphNames = glyphOrder
+                if oldGlyphNames != newGlyphNames:
+                    glyphChanges.update(set(oldGlyphNames) ^ set(newGlyphNames))
+                    reloadPattern["glyphMap"] = None
+                    # XXXXXX TODO update rawGlyphData
 
             if suffix == ".glyph" and os.path.isfile(path):
                 with open(path, "r") as fp:
@@ -1249,6 +1257,7 @@ class GlyphsPackageBackend(GlyphsBackend):
                 self.parsedGlyphNames.discard(glyphName)
 
         if shouldReloadAll:
+            self._setupWithRawData(*self._loadFiles())
             return None
 
         if glyphChanges:
