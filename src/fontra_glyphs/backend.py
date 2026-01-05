@@ -1126,24 +1126,32 @@ def storeInDict(d, key, value, doStore):
 
 
 class GlyphsPackageBackend(GlyphsBackend):
-    def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
-        fontInfoPath = self.path / "fontinfo.plist"
-        orderPath = self.path / "order.plist"
-        glyphsPath = self.path / "glyphs"
+    @property
+    def fontInfoPath(self):
+        return self.path / "fontinfo.plist"
 
+    @property
+    def orderPath(self):
+        return self.path / "order.plist"
+
+    @property
+    def glyphsPath(self):
+        return self.path / "glyphs"
+
+    def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
         glyphOrder = []
-        if orderPath.exists():
-            with open(orderPath, "r", encoding="utf-8") as fp:
+        if self.orderPath.exists():
+            with open(self.orderPath, "r", encoding="utf-8") as fp:
                 glyphOrder = openstep_plist.load(fp)
         glyphNameToIndex = {glyphName: i for i, glyphName in enumerate(glyphOrder)}
 
-        with open(fontInfoPath, "r", encoding="utf-8") as fp:
+        with open(self.fontInfoPath, "r", encoding="utf-8") as fp:
             rawFontData = openstep_plist.load(fp, use_numbers=True)
 
         rawFontData["glyphs"] = []
 
         rawGlyphsData = []
-        for glyphfile in glyphsPath.glob("*.glyph"):
+        for glyphfile in self.glyphsPath.glob("*.glyph"):
             with open(glyphfile, "r") as fp:
                 glyphData = openstep_plist.load(fp, use_numbers=True)
             rawGlyphsData.append(glyphData)
@@ -1198,9 +1206,8 @@ class GlyphsPackageBackend(GlyphsBackend):
         self.fileWatcherIgnoreNextChange(filePathGlyphOrder)
 
     def getGlyphFilePath(self, glyphName):
-        glyphsPath = self.path / "glyphs"
         refFileName = userNameToFileName(glyphName, suffix=".glyph")
-        return glyphsPath / refFileName
+        return self.glyphsPath / refFileName
 
     async def fileWatcherProcessChanges(
         self, changes: set[tuple[Change, str]]
@@ -1208,7 +1215,7 @@ class GlyphsPackageBackend(GlyphsBackend):
         reloadPattern: dict[str, Any] = {}
         glyphChanges = set()
 
-        orderPath = os.fspath(self.path / "order.plist")
+        orderPath = os.fspath(self.orderPath)
 
         shouldReloadAll = False
 
