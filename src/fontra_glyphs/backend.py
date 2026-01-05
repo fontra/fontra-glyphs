@@ -120,7 +120,7 @@ class GlyphsBackend(WatchableBackend):
         gsFont = glyphsLib.classes.GSFont()
         self.path = pathlib.Path(path)
 
-        rawFontData, rawGlyphsData = self._loadFiles(path)
+        rawFontData, rawGlyphsData = self._loadFiles()
 
         parser = glyphsLib.parser.Parser(current_type=gsFont.__class__)
         parser.parse_into_object(gsFont, rawFontData)
@@ -183,9 +183,8 @@ class GlyphsBackend(WatchableBackend):
         self.parsedGlyphNames: set[str] = set()
         self.glyphMap, self.kerningGroups = self._readGlyphMapAndKerningGroups()
 
-    @staticmethod
-    def _loadFiles(path: PathLike) -> tuple[dict[str, Any], list[Any]]:
-        with open(path, "r", encoding="utf-8") as fp:
+    def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
+        with open(self.path, "r", encoding="utf-8") as fp:
             rawFontData = openstep_plist.load(fp, use_numbers=True)
 
         # We separate the "glyphs" list from the rest, so we can prevent glyphsLib
@@ -915,7 +914,7 @@ class GlyphsBackend(WatchableBackend):
         reloadPattern: dict[str, Any] = {}
         glyphChanges = set()
 
-        rawFontData, rawGlyphsData = self._loadFiles(self.path)
+        rawFontData, rawGlyphsData = self._loadFiles()
 
         # if rawFontData != self.rawFontData:
         #     # RELOAD FONT INFO DATA
@@ -1127,12 +1126,10 @@ def storeInDict(d, key, value, doStore):
 
 
 class GlyphsPackageBackend(GlyphsBackend):
-    @staticmethod
-    def _loadFiles(path: PathLike) -> tuple[dict[str, Any], list[Any]]:
-        packagePath = pathlib.Path(path)
-        fontInfoPath = packagePath / "fontinfo.plist"
-        orderPath = packagePath / "order.plist"
-        glyphsPath = packagePath / "glyphs"
+    def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
+        fontInfoPath = self.path / "fontinfo.plist"
+        orderPath = self.path / "order.plist"
+        glyphsPath = self.path / "glyphs"
 
         glyphOrder = []
         if orderPath.exists():
