@@ -189,7 +189,7 @@ async def test_putGlyph(writableTestFont, glyphName):
     savedGlyph = await writableTestFont.getGlyph(glyphName)
     assert glyph == savedGlyph
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     reopenedGlyph = await reopened.getGlyph(glyphName)
     assert glyph == reopenedGlyph
 
@@ -211,10 +211,10 @@ async def test_duplicateGlyph(writableTestFont, gName):
 
     assert glyph == savedGlyph
 
-    if os.path.isdir(writableTestFont.gsFilePath):
+    if os.path.isdir(writableTestFont.path):
         # This is a glyphspackage:
         # check if the order.plist has been updated as well.
-        packagePath = pathlib.Path(writableTestFont.gsFilePath)
+        packagePath = pathlib.Path(writableTestFont.path)
         orderPath = packagePath / "order.plist"
         with open(orderPath, "r", encoding="utf-8") as fp:
             glyphOrder = openstep_plist.load(fp, use_numbers=True)
@@ -229,7 +229,7 @@ async def test_updateGlyphCodePoints(writableTestFont):
     codePoints = [0x0041, 0x0061]
     await writableTestFont.putGlyph(glyphName, glyph, codePoints)
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     reopenedGlyphMap = await reopened.getGlyphMap()
     assert reopenedGlyphMap["A"] == [0x0041, 0x0061]
 
@@ -732,7 +732,7 @@ async def test_putKerning(writableTestFont, modifierFunction, expectedException)
         async with aclosing(writableTestFont):
             await writableTestFont.putKerning(kerning)
 
-        reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+        reopened = getFileSystemBackend(writableTestFont.path)
         reopenedKerning = await reopened.getKerning()
         assert reopenedKerning == kerning
 
@@ -759,7 +759,7 @@ async def test_putFeatures(writableTestFont):
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
     assert features.text == featureText
 
@@ -784,7 +784,7 @@ sub @c2sc_source by @c2sc_target;
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
     assert features.text == featureText
 
@@ -847,7 +847,7 @@ async def test_deleteGlyph(writableTestFont):
     async with aclosing(writableTestFont):
         await writableTestFont.deleteGlyph(glyphName)
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     glyphMap = await reopened.getGlyphMap()
     assert glyphName not in glyphMap
 
@@ -870,7 +870,7 @@ async def test_deleteGlyph_addGlyph(writableTestFont):
         await writableTestFont.deleteGlyph(glyphName)
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     glyphMap = await reopened.getGlyphMap()
     assert glyphName in glyphMap
     afterKerning = await reopened.getKerning()
@@ -959,8 +959,9 @@ async def test_externalChanges(writableTestFont, onlyGlyphs):
 
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
         # await writableTestFont.putFontInfo(fontInfo)  # TODO: writing is not yet supported
-        await writableTestFont.putKerning(kerning)
-        await writableTestFont.putFeatures(features)
+        if not onlyGlyphs:
+            await writableTestFont.putKerning(kerning)
+            await writableTestFont.putFeatures(features)
 
         await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
 
