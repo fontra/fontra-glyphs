@@ -916,7 +916,8 @@ async def test_findGlyphsThatUseGlyph(testFont, glyphName, expectedUsedBy):
     assert usedBy == expectedUsedBy
 
 
-async def test_externalChanges(writableTestFont):
+@pytest.mark.parametrize("onlyGlyphs", [False, True])
+async def test_externalChanges(writableTestFont, onlyGlyphs):
     listenerFont = getFileSystemBackend(writableTestFont.path)
     listenerHandler = FontHandler(
         backend=listenerFont,
@@ -933,6 +934,9 @@ async def test_externalChanges(writableTestFont):
         listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
         listenerFontInfo = await listenerHandler.getFontInfo()  # load in cache
         listenerKerning = await listenerHandler.getKerning()  # load in cache
+        del listenerKerning[
+            "vkrn"
+        ]  # skip vkrn, as it's not supported for writing in Glyphs 2
         listenerFeatures = await listenerHandler.getFeatures()  # load in cache
 
         glyphMap = await writableTestFont.getGlyphMap()
@@ -945,12 +949,13 @@ async def test_externalChanges(writableTestFont):
         # fontInfo.familyName += "TESTING"  # TODO: writing is not yet supported
 
         kerning = await writableTestFont.getKerning()
-        kerning["kern"].values["@A"]["@J"][1] = 999
-        if writableTestFont.gsFont.format_version == 2 and "vkrn" in kerning:
-            del kerning["vkrn"]
+        del kerning["vkrn"]  # skip vkrn, as it's not supported for writing in Glyphs 2
+        if not onlyGlyphs:
+            kerning["kern"].values["@A"]["@J"][1] = 999
 
         features = await writableTestFont.getFeatures()
-        features.text += "\n# TEST"
+        if not onlyGlyphs:
+            features.text += "\n# TEST"
 
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
         # await writableTestFont.putFontInfo(fontInfo)  # TODO: writing is not yet supported
