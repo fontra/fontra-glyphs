@@ -113,6 +113,7 @@ class GlyphsBackend:
         self._writeLock = asyncio.Lock()
 
     def _setupFromPath(self, path: PathLike) -> None:
+        self.path = path
         gsFont = glyphsLib.classes.GSFont()
         self.gsFilePath = pathlib.Path(path)
 
