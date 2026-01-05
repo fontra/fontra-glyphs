@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 import shutil
@@ -22,6 +23,8 @@ from fontra.core.classes import (
     VariableGlyph,
     structure,
 )
+from fontra.core.fonthandler import FontHandler
+from fontra.filesystem.projectmanager import FileSystemProjectManager
 
 from fontra_glyphs.backend import GlyphsBackendError
 
@@ -911,3 +914,60 @@ async def test_writeFontData_glyphspackage_empty_glyphs_list(tmpdir):
 async def test_findGlyphsThatUseGlyph(testFont, glyphName, expectedUsedBy):
     usedBy = await testFont.findGlyphsThatUseGlyph(glyphName)
     assert usedBy == expectedUsedBy
+
+
+async def test_externalChanges(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = FontHandler(
+        backend=listenerFont,
+        projectIdentifier="test",
+        metaInfoProvider=FileSystemProjectManager(),
+    )
+
+    async with aclosing(listenerHandler):
+        await listenerHandler.startTasks()
+
+        glyphName = "A"
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()  # load in cache
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
+        listenerFontInfo = await listenerHandler.getFontInfo()  # load in cache
+        listenerKerning = await listenerHandler.getKerning()  # load in cache
+        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
+
+        glyphMap = await writableTestFont.getGlyphMap()
+        glyphMap[glyphName] = glyphMap[glyphName][:1]
+        glyph = await writableTestFont.getGlyph(glyphName)
+        layerGlyph = glyph.layers[glyph.sources[0].layerName].glyph
+        layerGlyph.path.coordinates[0] = 999
+
+        fontInfo = await writableTestFont.getFontInfo()
+        # fontInfo.familyName += "TESTING"  # TODO: writing is not yet supported
+
+        kerning = await writableTestFont.getKerning()
+        kerning["kern"].values["@A"]["@J"][1] = 999
+
+        features = await writableTestFont.getFeatures()
+        features.text += "\n# TEST"
+
+        await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
+        # await writableTestFont.putFontInfo(fontInfo)  # TODO: writing is not yet supported
+        await writableTestFont.putKerning(kerning)
+        await writableTestFont.putFeatures(features)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)
+        assert glyph == listenerGlyph
+
+        listenerFontInfo = await listenerHandler.getFontInfo()
+        assert fontInfo == listenerFontInfo
+
+        listenerKerning = await listenerHandler.getKerning()
+        assert kerning == listenerKerning
+
+        listenerFeatures = await listenerHandler.getFeatures()
+        assert features == listenerFeatures
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert glyphMap == listenerGlyphMap
