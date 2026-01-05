@@ -117,11 +117,13 @@ class GlyphsBackend(WatchableBackend):
         self._writeLock = asyncio.Lock()
 
     def _setupFromPath(self, path: PathLike) -> None:
-        gsFont = glyphsLib.classes.GSFont()
         self.path = pathlib.Path(path)
 
         rawFontData, rawGlyphsData = self._loadFiles()
+        self._setupWithRawData(rawFontData, rawGlyphsData)
 
+    def _setupWithRawData(self, rawFontData, rawGlyphsData) -> None:
+        gsFont = glyphsLib.classes.GSFont()
         parser = glyphsLib.parser.Parser(current_type=gsFont.__class__)
         parser.parse_into_object(gsFont, rawFontData)
 
