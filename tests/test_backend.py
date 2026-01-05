@@ -955,7 +955,7 @@ async def test_externalChanges(writableTestFont, onlyGlyphs):
 
         features = await writableTestFont.getFeatures()
         if not onlyGlyphs:
-            features.text += "\n# TEST"
+            features.text += "\nfeature test {\nsub A by a;\n} test;\n"
 
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
         # await writableTestFont.putFontInfo(fontInfo)  # TODO: writing is not yet supported
