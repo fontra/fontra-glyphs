@@ -1098,15 +1098,12 @@ class GlyphsPackageBackend(GlyphsBackend):
                 glyphData = openstep_plist.load(fp, use_numbers=True)
             rawGlyphsData.append(glyphData)
 
-        def sortKey(glyphData):
-            glyphName = glyphData["glyphname"]
-            index = glyphNameToIndex.get(glyphName)
-            if index is not None:
-                return (0, index)
-            else:
-                return (1, glyphName)
-
-        rawGlyphsData.sort(key=sortKey)
+        rawGlyphsData.sort(
+            key=lambda glyphData: (
+                glyphNameToIndex.get(glyphData["glyphname"], 0xFFFFFFFF),
+                glyphData["glyphname"],
+            )
+        )
 
         return rawFontData, rawGlyphsData
 
