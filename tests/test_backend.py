@@ -939,7 +939,7 @@ async def test_externalChanges_putGlyph(writableTestFont, changeUnicodes):
 
         glyphMap = await writableTestFont.getGlyphMap()
         if changeUnicodes:
-            glyphMap[glyphName] = glyphMap[glyphName][:1]
+            glyphMap[glyphName] = glyphMap[glyphName] + [0x1234]
 
         glyph = await writableTestFont.getGlyph(glyphName)
         layerGlyph = glyph.layers[glyph.sources[0].layerName].glyph
