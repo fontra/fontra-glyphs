@@ -129,12 +129,6 @@ class GlyphsBackend(WatchableBackend):
         parser.parse_into_object(gsFont, rawFontData)
 
         self.gsFont = gsFont
-
-        # Fill the glyphs list with dummy placeholder glyphs
-        self.gsFont.glyphs = [
-            glyphsLib.classes.GSGlyph() for i in range(len(rawGlyphsData))
-        ]
-
         self.rawFontData = rawFontData
         self._updateRawGlyphsData(rawGlyphsData)
 
@@ -180,6 +174,10 @@ class GlyphsBackend(WatchableBackend):
         }
 
     def _updateRawGlyphsData(self, rawGlyphsData):
+        # Fill the glyphs list with dummy placeholder glyphs
+        self.gsFont.glyphs = [
+            glyphsLib.classes.GSGlyph() for i in range(len(rawGlyphsData))
+        ]
         self.rawGlyphsData = rawGlyphsData
         self._updateGlyphNameToIndex()
         self.originalGlyphNameToIndex = dict(self.glyphNameToIndex)
@@ -639,6 +637,7 @@ class GlyphsBackend(WatchableBackend):
             current_type=gsGlyph.__class__, format_version=self.gsFont.format_version
         )
         p.parse_into_object(gsGlyph, rawGlyphData)
+        assert glyphIndex < len(self.gsFont.glyphs)
         self.gsFont.glyphs[glyphIndex] = gsGlyph
 
         # Load all component dependencies
