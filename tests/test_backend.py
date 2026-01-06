@@ -916,20 +916,24 @@ async def test_findGlyphsThatUseGlyph(testFont, glyphName, expectedUsedBy):
     assert usedBy == expectedUsedBy
 
 
-@pytest.mark.parametrize("onlyGlyphs", [False, True])
-async def test_externalChanges(writableTestFont, onlyGlyphs):
-    listenerFont = getFileSystemBackend(writableTestFont.path)
-    listenerHandler = FontHandler(
-        backend=listenerFont,
+async def setupFontHandler(backend):
+    fh = FontHandler(
+        backend=backend,
         projectIdentifier="test",
         metaInfoProvider=FileSystemProjectManager(),
     )
+    await fh.startTasks()
+    return fh
+
+
+@pytest.mark.parametrize("onlyGlyphs", [False, True])
+async def test_externalChanges(writableTestFont, onlyGlyphs):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    glyphName = "A"
 
     async with aclosing(listenerHandler):
-        await listenerHandler.startTasks()
-
-        glyphName = "A"
-
         listenerGlyphMap = await listenerHandler.getGlyphMap()  # load in cache
         listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
         listenerFontInfo = await listenerHandler.getFontInfo()  # load in cache
