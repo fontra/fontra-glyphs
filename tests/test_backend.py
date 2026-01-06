@@ -960,11 +960,12 @@ async def test_externalChanges_addGlyph(writableTestFont):
     listenerFont = getFileSystemBackend(writableTestFont.path)
     listenerHandler = await setupFontHandler(listenerFont)
 
-    sourceGlyphName = "A"
-    destGlyphName = "A.alt"
+    sourceGlyphName = "h"
+    destGlyphName = "h.alt"
 
     async with aclosing(listenerHandler):
         glyph = await writableTestFont.getGlyph(sourceGlyphName)
+        glyph.name = destGlyphName
 
         await writableTestFont.putGlyph(destGlyphName, glyph, [])
 
