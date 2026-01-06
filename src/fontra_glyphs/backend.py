@@ -1217,6 +1217,9 @@ class GlyphsPackageBackend(GlyphsBackend):
     ) -> dict[str, Any] | None:
         reloadPattern: dict[str, Any] = {}
         glyphChanges = set()
+        glyphSetChanged = False
+        glyphMapChanged = False
+        glyphOrder = None
 
         shouldReloadAll = False
 
@@ -1234,8 +1237,8 @@ class GlyphsPackageBackend(GlyphsBackend):
                 newGlyphNames = glyphOrder
                 if oldGlyphNames != newGlyphNames:
                     glyphChanges.update(set(oldGlyphNames) ^ set(newGlyphNames))
-                    reloadPattern["glyphMap"] = None
-                    # XXXXXX TODO update rawGlyphData
+                    glyphSetChanged = True
+                    glyphMapChanged = True
 
             if suffix == ".glyph" and os.path.isfile(path):
                 glyphData = openstepPlistFromPath(path)
@@ -1243,17 +1246,39 @@ class GlyphsPackageBackend(GlyphsBackend):
                 glyphChanges.add(glyphName)
                 index = self.glyphNameToIndex.get(glyphName)
                 if index is not None:
+                    if self.rawGlyphsData[index].get("unicode") != glyphData.get(
+                        "unicode"
+                    ):
+                        glyphMapChanged = True
                     self.rawGlyphsData[index] = glyphData
                 else:
                     pass  # this case is handled by the change in order.plist
                 self.parsedGlyphNames.discard(glyphName)
 
+        if glyphSetChanged:
+            assert glyphOrder is not None
+            rawGlyphsData = []
+            for glyphName in glyphOrder:
+                index = self.glyphNameToIndex.get(glyphName)
+                rawGlyphsData.append(
+                    self.rawGlyphsData[index]
+                    if index is not None
+                    else openstepPlistFromPath(self.getGlyphFilePath(glyphName))
+                )
+            self.rawGlyphsData = rawGlyphsData
+
         if shouldReloadAll:
-            self._setupWithRawData(*self._loadFiles())
+            rawFontData = openstepPlistFromPath(self.fontInfoPath)
+            rawFontData["glyphs"] = []
+            self._setupWithRawData(rawFontData, self.rawGlyphsData)
             return None
 
         if glyphChanges:
             reloadPattern["glyphs"] = dict.fromkeys(sorted(glyphChanges))
+
+        if glyphMapChanged:
+            self._updateRawGlyphsData(self.rawGlyphsData)
+            reloadPattern["glyphMap"] = None
 
         return reloadPattern
 
