@@ -926,8 +926,8 @@ async def setupFontHandler(backend):
     return fh
 
 
-@pytest.mark.parametrize("onlyGlyphs", [False, True])
-async def test_externalChanges(writableTestFont, onlyGlyphs):
+@pytest.mark.parametrize("changeUnicodes", [False, True])
+async def test_externalChanges_putGlyph(writableTestFont, changeUnicodes):
     listenerFont = getFileSystemBackend(writableTestFont.path)
     listenerHandler = await setupFontHandler(listenerFont)
 
@@ -936,50 +936,59 @@ async def test_externalChanges(writableTestFont, onlyGlyphs):
     async with aclosing(listenerHandler):
         listenerGlyphMap = await listenerHandler.getGlyphMap()  # load in cache
         listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
-        listenerFontInfo = await listenerHandler.getFontInfo()  # load in cache
-        listenerKerning = await listenerHandler.getKerning()  # load in cache
-        del listenerKerning[
-            "vkrn"
-        ]  # skip vkrn, as it's not supported for writing in Glyphs 2
-        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
 
         glyphMap = await writableTestFont.getGlyphMap()
-        glyphMap[glyphName] = glyphMap[glyphName][:1]
+        if changeUnicodes:
+            glyphMap[glyphName] = glyphMap[glyphName][:1]
+
         glyph = await writableTestFont.getGlyph(glyphName)
         layerGlyph = glyph.layers[glyph.sources[0].layerName].glyph
         layerGlyph.path.coordinates[0] = 999
 
-        fontInfo = await writableTestFont.getFontInfo()
-        # fontInfo.familyName += "TESTING"  # TODO: writing is not yet supported
-
-        kerning = await writableTestFont.getKerning()
-        del kerning["vkrn"]  # skip vkrn, as it's not supported for writing in Glyphs 2
-        if not onlyGlyphs:
-            kerning["kern"].values["@A"]["@J"][1] = 999
-
-        features = await writableTestFont.getFeatures()
-        if not onlyGlyphs:
-            features.text += "\nfeature test {\nsub A by a;\n} test;\n"
-
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
-        # await writableTestFont.putFontInfo(fontInfo)  # TODO: writing is not yet supported
-        if not onlyGlyphs:
-            await writableTestFont.putKerning(kerning)
-            await writableTestFont.putFeatures(features)
 
         await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
 
         listenerGlyph = await listenerHandler.getGlyph(glyphName)
         assert glyph == listenerGlyph
 
-        listenerFontInfo = await listenerHandler.getFontInfo()
-        assert fontInfo == listenerFontInfo
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert glyphMap == listenerGlyphMap
+
+
+async def test_externalChanges_putKerning(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerKerning = await listenerHandler.getKerning()  # load in cache
+        del listenerKerning["vkrn"]  # skip vkrn, doesn't work for Glyphs 2
+
+        kerning = await writableTestFont.getKerning()
+        del kerning["vkrn"]  # skip vkrn, doesn't work for Glyphs 2
+        kerning["kern"].values["@A"]["@J"][1] = 999
+
+        await writableTestFont.putKerning(kerning)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
 
         listenerKerning = await listenerHandler.getKerning()
         assert kerning == listenerKerning
 
+
+async def test_externalChanges_putFeatures(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
+
+        features = await writableTestFont.getFeatures()
+        features.text += "\nfeature test {\nsub A by a;\n} test;\n"
+
+        await writableTestFont.putFeatures(features)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
         listenerFeatures = await listenerHandler.getFeatures()
         assert features == listenerFeatures
-
-        listenerGlyphMap = await listenerHandler.getGlyphMap()
-        assert glyphMap == listenerGlyphMap
