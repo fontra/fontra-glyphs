@@ -687,8 +687,7 @@ class GlyphsBackend(WatchableBackend):
         writer.write(object)
 
         # Parse stream into "raw" object
-        f.seek(0)
-        return openstep_plist.load(f, use_numbers=True)
+        return openstep_plist.loads(f.getvalue(), use_numbers=True)
 
     async def putGlyph(
         self, glyphName: str, glyph: VariableGlyph, codePoints: list[int]
