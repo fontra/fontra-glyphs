@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 import shutil
@@ -22,6 +23,8 @@ from fontra.core.classes import (
     VariableGlyph,
     structure,
 )
+from fontra.core.fonthandler import FontHandler
+from fontra.filesystem.projectmanager import FileSystemProjectManager
 
 from fontra_glyphs.backend import GlyphsBackendError
 
@@ -186,7 +189,7 @@ async def test_putGlyph(writableTestFont, glyphName):
     savedGlyph = await writableTestFont.getGlyph(glyphName)
     assert glyph == savedGlyph
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     reopenedGlyph = await reopened.getGlyph(glyphName)
     assert glyph == reopenedGlyph
 
@@ -208,10 +211,10 @@ async def test_duplicateGlyph(writableTestFont, gName):
 
     assert glyph == savedGlyph
 
-    if os.path.isdir(writableTestFont.gsFilePath):
+    if os.path.isdir(writableTestFont.path):
         # This is a glyphspackage:
         # check if the order.plist has been updated as well.
-        packagePath = pathlib.Path(writableTestFont.gsFilePath)
+        packagePath = pathlib.Path(writableTestFont.path)
         orderPath = packagePath / "order.plist"
         with open(orderPath, "r", encoding="utf-8") as fp:
             glyphOrder = openstep_plist.load(fp, use_numbers=True)
@@ -226,7 +229,7 @@ async def test_updateGlyphCodePoints(writableTestFont):
     codePoints = [0x0041, 0x0061]
     await writableTestFont.putGlyph(glyphName, glyph, codePoints)
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     reopenedGlyphMap = await reopened.getGlyphMap()
     assert reopenedGlyphMap["A"] == [0x0041, 0x0061]
 
@@ -729,7 +732,7 @@ async def test_putKerning(writableTestFont, modifierFunction, expectedException)
         async with aclosing(writableTestFont):
             await writableTestFont.putKerning(kerning)
 
-        reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+        reopened = getFileSystemBackend(writableTestFont.path)
         reopenedKerning = await reopened.getKerning()
         assert reopenedKerning == kerning
 
@@ -756,7 +759,7 @@ async def test_putFeatures(writableTestFont):
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
     assert features.text == featureText
 
@@ -781,7 +784,7 @@ sub @c2sc_source by @c2sc_target;
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
     assert features.text == featureText
 
@@ -844,7 +847,7 @@ async def test_deleteGlyph(writableTestFont):
     async with aclosing(writableTestFont):
         await writableTestFont.deleteGlyph(glyphName)
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     glyphMap = await reopened.getGlyphMap()
     assert glyphName not in glyphMap
 
@@ -867,7 +870,7 @@ async def test_deleteGlyph_addGlyph(writableTestFont):
         await writableTestFont.deleteGlyph(glyphName)
         await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
 
-    reopened = getFileSystemBackend(writableTestFont.gsFilePath)
+    reopened = getFileSystemBackend(writableTestFont.path)
     glyphMap = await reopened.getGlyphMap()
     assert glyphName in glyphMap
     afterKerning = await reopened.getKerning()
@@ -911,3 +914,123 @@ async def test_writeFontData_glyphspackage_empty_glyphs_list(tmpdir):
 async def test_findGlyphsThatUseGlyph(testFont, glyphName, expectedUsedBy):
     usedBy = await testFont.findGlyphsThatUseGlyph(glyphName)
     assert usedBy == expectedUsedBy
+
+
+async def setupFontHandler(backend):
+    fh = FontHandler(
+        backend=backend,
+        projectIdentifier="test",
+        metaInfoProvider=FileSystemProjectManager(),
+    )
+    await fh.startTasks()
+    return fh
+
+
+@pytest.mark.parametrize("changeUnicodes", [False, True])
+async def test_externalChanges_putGlyph(writableTestFont, changeUnicodes):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    glyphName = "A"
+
+    async with aclosing(listenerHandler):
+        listenerGlyphMap = await listenerHandler.getGlyphMap()  # load in cache
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
+
+        glyphMap = await writableTestFont.getGlyphMap()
+        if changeUnicodes:
+            glyphMap[glyphName] = glyphMap[glyphName] + [0x1234]
+
+        glyph = await writableTestFont.getGlyph(glyphName)
+        layerGlyph = glyph.layers[glyph.sources[0].layerName].glyph
+        layerGlyph.path.coordinates[0] = 999
+
+        await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)
+        assert glyph == listenerGlyph
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert glyphMap == listenerGlyphMap
+
+
+async def test_externalChanges_addGlyph(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    sourceGlyphName = "h"
+    destGlyphName = "h.alt"
+
+    async with aclosing(listenerHandler):
+        glyph = await writableTestFont.getGlyph(sourceGlyphName)
+        glyph.name = destGlyphName
+
+        await writableTestFont.putGlyph(destGlyphName, glyph, [])
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(destGlyphName)
+        assert glyph == listenerGlyph
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert destGlyphName in listenerGlyphMap
+
+
+async def test_externalChanges_deleteGlyph(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    glyphName = "h"
+
+    async with aclosing(listenerHandler):
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
+
+        await writableTestFont.deleteGlyph(glyphName)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)
+        assert listenerGlyph is None
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert glyphName not in listenerGlyphMap
+
+
+async def test_externalChanges_putKerning(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerKerning = await listenerHandler.getKerning()  # load in cache
+        del listenerKerning["vkrn"]  # skip vkrn, doesn't work for Glyphs 2
+
+        kerning = await writableTestFont.getKerning()
+        del kerning["vkrn"]  # skip vkrn, doesn't work for Glyphs 2
+        kerning["kern"].values["@A"]["@J"][1] = 999
+
+        await writableTestFont.putKerning(kerning)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerKerning = await listenerHandler.getKerning()
+        assert kerning == listenerKerning
+
+
+async def test_externalChanges_putFeatures(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
+
+        features = await writableTestFont.getFeatures()
+        features.text += "\nfeature test {\nsub A by a;\n} test;\n"
+
+        await writableTestFont.putFeatures(features)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerFeatures = await listenerHandler.getFeatures()
+        assert features == listenerFeatures

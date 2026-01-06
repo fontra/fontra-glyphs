@@ -160,11 +160,11 @@ async def test_roundtripGlyphsFile(tmpdir, path):
         # If path is a dir, it's a glyphs package.
         for path, path2 in zip(
             getListOfGlyphsPackageFiles(path),
-            getListOfGlyphsPackageFiles(testFont.gsFilePath),
+            getListOfGlyphsPackageFiles(testFont.path),
         ):
             compareFilesByLines(path, path2)
     else:
-        compareFilesByLines(path, testFont.gsFilePath)
+        compareFilesByLines(path, testFont.path)
 
 
 def compareFilesByLines(pathA, pathB):
