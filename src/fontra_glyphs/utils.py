@@ -1,6 +1,12 @@
 import openstep_plist
 
 
+def openstepPlistFromPath(path):
+    with open(path, "r") as fp:
+        obj = openstep_plist.load(fp, use_numbers=True)
+    return obj
+
+
 def openstepPlistDumps(rawData):
     return (
         openstep_plist.dumps(

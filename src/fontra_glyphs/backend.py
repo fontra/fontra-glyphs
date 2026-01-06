@@ -58,6 +58,7 @@ from .utils import (
     matchTreeFont,
     matchTreeGlyph,
     openstepPlistDumps,
+    openstepPlistFromPath,
     splitLocation,
 )
 
@@ -186,8 +187,7 @@ class GlyphsBackend(WatchableBackend):
         self.glyphMap, self.kerningGroups = self._readGlyphMapAndKerningGroups()
 
     def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
-        with open(self.path, "r", encoding="utf-8") as fp:
-            rawFontData = openstep_plist.load(fp, use_numbers=True)
+        rawFontData = openstepPlistFromPath(self.path)
 
         # We separate the "glyphs" list from the rest, so we can prevent glyphsLib
         # from eagerly parsing all glyphs
@@ -1149,19 +1149,15 @@ class GlyphsPackageBackend(GlyphsBackend):
     def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
         glyphOrder = []
         if self.orderPath.exists():
-            with open(self.orderPath, "r", encoding="utf-8") as fp:
-                glyphOrder = openstep_plist.load(fp)
+            glyphOrder = openstepPlistFromPath(self.orderPath)
         glyphNameToIndex = {glyphName: i for i, glyphName in enumerate(glyphOrder)}
 
-        with open(self.fontInfoPath, "r", encoding="utf-8") as fp:
-            rawFontData = openstep_plist.load(fp, use_numbers=True)
-
+        rawFontData = openstepPlistFromPath(self.fontInfoPath)
         rawFontData["glyphs"] = []
 
         rawGlyphsData = []
-        for glyphfile in self.glyphsPath.glob("*.glyph"):
-            with open(glyphfile, "r") as fp:
-                glyphData = openstep_plist.load(fp, use_numbers=True)
+        for glyphPath in self.glyphsPath.glob("*.glyph"):
+            glyphData = openstepPlistFromPath(glyphPath)
             rawGlyphsData.append(glyphData)
 
         rawGlyphsData.sort(
@@ -1231,8 +1227,7 @@ class GlyphsPackageBackend(GlyphsBackend):
                 shouldReloadAll = True
 
             if fileName == self.orderFileName:
-                with open(self.orderPath, "r", encoding="utf-8") as fp:
-                    glyphOrder = openstep_plist.load(fp)
+                glyphOrder = openstepPlistFromPath(self.orderPath)
 
                 oldGlyphNames = list(self.glyphNameToIndex)
                 newGlyphNames = glyphOrder
@@ -1242,18 +1237,14 @@ class GlyphsPackageBackend(GlyphsBackend):
                     # XXXXXX TODO update rawGlyphData
 
             if suffix == ".glyph" and os.path.isfile(path):
-                with open(path, "r") as fp:
-                    glyphData = openstep_plist.load(fp, use_numbers=True)
+                glyphData = openstepPlistFromPath(path)
                 glyphName = glyphData["glyphname"]
                 glyphChanges.add(glyphName)
                 index = self.glyphNameToIndex.get(glyphName)
-                if index is None:
-                    pass
-                    # FIXME hmhm maybe we should ignore and wait for a change in the order file
-                    # self.rawGlyphsData.append(glyphData)
-                    # self._updateGlyphNameToIndex()
-                else:
+                if index is not None:
                     self.rawGlyphsData[index] = glyphData
+                else:
+                    pass  # this case is handled by the change in order.plist
                 self.parsedGlyphNames.discard(glyphName)
 
         if shouldReloadAll:
