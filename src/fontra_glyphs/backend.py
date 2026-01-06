@@ -945,13 +945,16 @@ class GlyphsBackend(WatchableBackend):
                     for glyphName in glyphChanges
                 )
 
-            if glyphChanges:
-                self._updateRawGlyphsData(rawGlyphsData)
+            if glyphSetChanges or glyphChanges:
                 reloadPattern["glyphs"] = dict.fromkeys(
                     sorted(glyphSetChanges | glyphChanges)
                 )
-                if glyphMapChanged:
-                    reloadPattern["glyphMap"] = None
+
+            if glyphMapChanged:
+                reloadPattern["glyphMap"] = None
+
+            if glyphChanges or glyphMapChanged:
+                self._updateRawGlyphsData(rawGlyphsData)
 
         return reloadPattern
 
