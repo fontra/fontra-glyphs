@@ -956,6 +956,47 @@ async def test_externalChanges_putGlyph(writableTestFont, changeUnicodes):
         assert glyphMap == listenerGlyphMap
 
 
+async def test_externalChanges_addGlyph(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    sourceGlyphName = "A"
+    destGlyphName = "A.alt"
+
+    async with aclosing(listenerHandler):
+        glyph = await writableTestFont.getGlyph(sourceGlyphName)
+
+        await writableTestFont.putGlyph(destGlyphName, glyph, [])
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(destGlyphName)
+        assert glyph == listenerGlyph
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert destGlyphName in listenerGlyphMap
+
+
+async def test_externalChanges_deleteGlyph(writableTestFont):
+    listenerFont = getFileSystemBackend(writableTestFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    glyphName = "h"
+
+    async with aclosing(listenerHandler):
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)  # load in cache
+
+        await writableTestFont.deleteGlyph(glyphName)
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerGlyph = await listenerHandler.getGlyph(glyphName)
+        assert listenerGlyph is None
+
+        listenerGlyphMap = await listenerHandler.getGlyphMap()
+        assert glyphName not in listenerGlyphMap
+
+
 async def test_externalChanges_putKerning(writableTestFont):
     listenerFont = getFileSystemBackend(writableTestFont.path)
     listenerHandler = await setupFontHandler(listenerFont)
