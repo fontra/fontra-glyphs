@@ -1,7 +1,6 @@
 import asyncio
 import hashlib
 import io
-import os
 import pathlib
 import uuid
 from collections import OrderedDict, defaultdict
@@ -1211,76 +1210,6 @@ class GlyphsPackageBackend(GlyphsBackend):
     def getGlyphFilePath(self, glyphName):
         refFileName = userNameToFileName(glyphName, suffix=".glyph")
         return self.glyphsPath / refFileName
-
-    async def fileWatcherProcessChanges(
-        self, changes: set[tuple[Change, str]]
-    ) -> dict[str, Any] | None:
-        reloadPattern: dict[str, Any] = {}
-        glyphChanges = set()
-        glyphSetChanged = False
-        glyphMapChanged = False
-        glyphOrder = None
-
-        shouldReloadAll = False
-
-        for change, path in sorted(changes):
-            fileName = os.path.basename(path)
-            stem, suffix = os.path.splitext(fileName)
-
-            if fileName == self.fontInfoFileName:
-                shouldReloadAll = True
-
-            if fileName == self.orderFileName:
-                glyphOrder = openstepPlistFromPath(self.orderPath)
-
-                oldGlyphNames = list(self.glyphNameToIndex)
-                newGlyphNames = glyphOrder
-                if oldGlyphNames != newGlyphNames:
-                    glyphChanges.update(set(oldGlyphNames) ^ set(newGlyphNames))
-                    glyphSetChanged = True
-                    glyphMapChanged = True
-
-            if suffix == ".glyph" and os.path.isfile(path):
-                glyphData = openstepPlistFromPath(path)
-                glyphName = glyphData["glyphname"]
-                glyphChanges.add(glyphName)
-                index = self.glyphNameToIndex.get(glyphName)
-                if index is not None:
-                    if self.rawGlyphsData[index].get("unicode") != glyphData.get(
-                        "unicode"
-                    ):
-                        glyphMapChanged = True
-                    self.rawGlyphsData[index] = glyphData
-                else:
-                    pass  # this case is handled by the change in order.plist
-                self.parsedGlyphNames.discard(glyphName)
-
-        if glyphSetChanged:
-            assert glyphOrder is not None
-            rawGlyphsData = []
-            for glyphName in glyphOrder:
-                index = self.glyphNameToIndex.get(glyphName)
-                rawGlyphsData.append(
-                    self.rawGlyphsData[index]
-                    if index is not None
-                    else openstepPlistFromPath(self.getGlyphFilePath(glyphName))
-                )
-            self.rawGlyphsData = rawGlyphsData
-
-        if shouldReloadAll:
-            rawFontData = openstepPlistFromPath(self.fontInfoPath)
-            rawFontData["glyphs"] = []
-            self._setupWithRawData(rawFontData, self.rawGlyphsData)
-            return None
-
-        if glyphChanges:
-            reloadPattern["glyphs"] = dict.fromkeys(sorted(glyphChanges))
-
-        if glyphMapChanged:
-            self._updateRawGlyphsData(self.rawGlyphsData)
-            reloadPattern["glyphMap"] = None
-
-        return reloadPattern
 
 
 def gsLayerToFontraLayer(gsLayer, globalAxisNames, gsLayerWidth, gsLayerId):
