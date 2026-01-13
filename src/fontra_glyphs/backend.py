@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import io
+import logging
 import pathlib
 import uuid
 from collections import OrderedDict, defaultdict
@@ -60,6 +61,8 @@ from .utils import (
     openstepPlistFromPath,
     splitLocation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GlyphsBackendError(Exception):
@@ -273,7 +276,8 @@ class GlyphsBackend(WatchableBackend):
 
     async def deleteGlyph(self, glyphName: str) -> None:
         if glyphName not in self.glyphNameToIndex:
-            raise KeyError(f"Glyph '{glyphName}' does not exist")
+            logger.debug(f"Can't delete unknown glyph '{glyphName}'")
+            return
 
         del self.glyphMap[glyphName]
         index = self.glyphNameToIndex[glyphName]

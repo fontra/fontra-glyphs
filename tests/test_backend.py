@@ -1034,3 +1034,11 @@ async def test_externalChanges_putFeatures(writableTestFont):
 
         listenerFeatures = await listenerHandler.getFeatures()
         assert features == listenerFeatures
+
+
+async def test_deleteUnknownGlyph(writableTestFont):
+    glyphName = "A.doesnotexist"
+    glyphMap = await writableTestFont.getGlyphMap()
+    assert glyphName not in glyphMap
+    # Should *not* raise an exception
+    await writableTestFont.deleteGlyph(glyphName)
