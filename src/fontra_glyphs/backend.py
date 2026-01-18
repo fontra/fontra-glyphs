@@ -12,6 +12,7 @@ from typing import Any
 
 import glyphsLib
 import openstep_plist
+from fontra.backends.base import ReadableBaseBackend
 from fontra.backends.filewatcher import Change
 from fontra.backends.watchable import WatchableBackend
 from fontra.core.classes import (
@@ -108,7 +109,7 @@ GS_FORMAT_3_KERN_SIDES = [
 ]
 
 
-class GlyphsBackend(WatchableBackend):
+class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
     @classmethod
     def fromPath(cls, path: PathLike) -> WritableFontBackend:
         self = cls()
