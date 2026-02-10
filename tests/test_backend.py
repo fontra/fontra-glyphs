@@ -755,7 +755,7 @@ async def test_getFeatures(testFont, referenceFont):
 
 
 putFeaturesTestData = [
-    "# dummy feature date\n",
+    "# dummy feature data\n",
     """@c2sc_source = [ A
 ];
 
