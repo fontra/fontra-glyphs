@@ -764,6 +764,12 @@ async def test_getFeatures_with_expansion():
     assert "@TOKEN_TESTING_CLASS = [A Adieresis A-cy];" in features.text
     assert "lookup testing_lookup {" in features.text
 
+    glyphsSource = expansionFontPath.read_text(encoding="utf-8")
+
+    assert "WARNING" not in glyphsSource
+    assert "@TOKEN_TESTING_CLASS = [A Adieresis A-cy];" not in glyphsSource
+    assert "lookup testing_lookup {" not in glyphsSource
+
 
 putFeaturesTestData = [
     "# dummy feature data\n",
