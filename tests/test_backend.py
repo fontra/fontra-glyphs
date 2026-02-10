@@ -754,18 +754,9 @@ async def test_getFeatures(testFont, referenceFont):
     assert await testFont.getFeatures() == await referenceFont.getFeatures()
 
 
-async def test_putFeatures(writableTestFont):
-    featureText = "# dummy feature data\n"
-    async with aclosing(writableTestFont):
-        await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
-
-    reopened = getFileSystemBackend(writableTestFont.path)
-    features = await reopened.getFeatures()
-    assert features.text == featureText
-
-
-async def test_putFeatures_with_feature_text(writableTestFont):
-    featureText = """@c2sc_source = [ A
+putFeaturesTestData = [
+    "# dummy feature date\n",
+    """@c2sc_source = [ A
 ];
 
 @c2sc_target = [ a.sc
@@ -780,37 +771,19 @@ languagesystem latn dflt; # Latin, Default
 feature c2sc {
 sub @c2sc_source by @c2sc_target;
 } c2sc;
-"""
+""",
+    "syntax error",
+]
+
+
+@pytest.mark.parametrize("featureText", putFeaturesTestData)
+async def test_putFeatures(writableTestFont, featureText):
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
     reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
     assert features.text == featureText
-
-
-async def test_putFeatures_with_feature_text_failing(writableTestFont):
-    featureText = """@case_source = [ at
-];
-
-@case_target = [ at.sc
-];
-
-# Prefix: Languagesystems
-# Demo feature code for testing
-
-languagesystem DFLT dflt; # Default, Default
-languagesystem latn dflt; # Latin, Default
-
-feature case {
-sub @case_source by @case_target;
-} case;
-"""
-    with pytest.raises(
-        GlyphsBackendError,
-        match="The following glyph names are referenced but are missing from the glyph set:",
-    ):
-        await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
 
 
 async def test_locationBaseWrite(writableTestFont):

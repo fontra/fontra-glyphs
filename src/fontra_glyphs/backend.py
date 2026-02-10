@@ -44,6 +44,7 @@ from fontra.core.varutils import (
     mapAxesFromUserSpaceToSourceSpace,
 )
 from fontTools.designspaceLib import DesignSpaceDocument
+from fontTools.feaLib.error import FeatureLibError
 from fontTools.misc.transform import DecomposedTransform
 from fontTools.ufoLib.filenames import userNameToFileName
 from glyphsLib.builder.axes import (
@@ -107,6 +108,9 @@ GS_FORMAT_3_KERN_SIDES = [
     ("top", "kernBottom"),
     ("bottom", "kernTop"),
 ]
+
+
+invalidFeaturesUserDataKey = "xyz.fontra.invalid-features"
 
 
 class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
@@ -473,8 +477,13 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.kerningGroups[side2] = deepcopy(kerning.groupsSide2)
 
     async def getFeatures(self) -> OpenTypeFeatures:
+        invalidFeatures = self.gsFont.userData.get(invalidFeaturesUserDataKey)
         return OpenTypeFeatures(
-            text=glyphsLib.builder.features._to_ufo_features(self.gsFont),
+            text=(
+                invalidFeatures
+                if invalidFeatures is not None
+                else glyphsLib.builder.features._to_ufo_features(self.gsFont)
+            ),
         )
 
     async def putFeatures(self, features: OpenTypeFeatures) -> None:
@@ -501,10 +510,11 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
             glyphsLib.builder.features._to_glyphs_features(
                 self.gsFont, features.text, glyph_names=self.glyphNameToIndex.keys()
             )
-        except Exception as e:
-            raise GlyphsBackendError(
-                f"GlyphsApp Backend: Error while parsing features: {e}"
-            )
+        except FeatureLibError:
+            self.gsFont.userData[invalidFeaturesUserDataKey] = features.text
+        else:
+            if invalidFeaturesUserDataKey in self.gsFont.userData:
+                del self.gsFont.userData[invalidFeaturesUserDataKey]
 
         self._writeFontData()
 
