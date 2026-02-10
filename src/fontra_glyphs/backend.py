@@ -37,6 +37,7 @@ from fontra.core.classes import (
 from fontra.core.discretevariationmodel import findNearestLocationIndex
 from fontra.core.path import PackedPathPointPen
 from fontra.core.protocols import WritableFontBackend
+from fontra.core.subprocess import runInSubProcess
 from fontra.core.threading import runInThread
 from fontra.core.varutils import (
     locationToTuple,
@@ -484,7 +485,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
         featureText = glyphsLib.builder.features._to_ufo_features(self.gsFont)
         if not canParseFeatures(featureText, self.glyphNameToIndex.keys()):
-            expandedFeatures = expensiveGetFeatures(self.path)
+            expandedFeatures = await runInSubProcess(expensiveGetFeatures, self.path)
             if expandedFeatures:
                 featureText = expandedFeatures
 
