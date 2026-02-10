@@ -1286,7 +1286,7 @@ def gsAnchorToFontraAnchor(gsAnchor):
         # TODO: gsAnchor.orientation – If the position of the anchor
         # is relative to the LSB (0), center (2) or RSB (1).
         # Details: https://docu.glyphsapp.com/#GSAnchor.orientation
-        customData=gsAnchor.userData if gsAnchor.userData else dict(),
+        customData=dict(gsAnchor.userData) if gsAnchor.userData else dict(),
     )
     return anchor
 
