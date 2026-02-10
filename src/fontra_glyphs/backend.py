@@ -37,6 +37,7 @@ from fontra.core.classes import (
 from fontra.core.discretevariationmodel import findNearestLocationIndex
 from fontra.core.path import PackedPathPointPen
 from fontra.core.protocols import WritableFontBackend
+from fontra.core.subprocess import runInSubProcess
 from fontra.core.threading import runInThread
 from fontra.core.varutils import (
     locationToTuple,
@@ -45,6 +46,7 @@ from fontra.core.varutils import (
 )
 from fontTools.designspaceLib import DesignSpaceDocument
 from fontTools.feaLib.error import FeatureLibError
+from fontTools.feaLib.parser import Parser as FeatureParser
 from fontTools.misc.transform import DecomposedTransform
 from fontTools.ufoLib.filenames import userNameToFileName
 from glyphsLib.builder.axes import (
@@ -478,13 +480,16 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
     async def getFeatures(self) -> OpenTypeFeatures:
         invalidFeatures = self.gsFont.userData.get(invalidFeaturesUserDataKey)
-        return OpenTypeFeatures(
-            text=(
-                invalidFeatures
-                if invalidFeatures is not None
-                else glyphsLib.builder.features._to_ufo_features(self.gsFont)
-            ),
-        )
+        if invalidFeatures is not None:
+            return OpenTypeFeatures(text=invalidFeatures)
+
+        featureText = glyphsLib.builder.features._to_ufo_features(self.gsFont)
+        if not canParseFeatures(featureText, self.glyphNameToIndex.keys()):
+            expandedFeatures = await runInSubProcess(expensiveGetFeatures, self.path)
+            if expandedFeatures:
+                featureText = expandedFeatures
+
+        return OpenTypeFeatures(text=featureText)
 
     async def putFeatures(self, features: OpenTypeFeatures) -> None:
         async with self._writeLock:
@@ -1286,7 +1291,7 @@ def gsAnchorToFontraAnchor(gsAnchor):
         # TODO: gsAnchor.orientation – If the position of the anchor
         # is relative to the LSB (0), center (2) or RSB (1).
         # Details: https://docu.glyphsapp.com/#GSAnchor.orientation
-        customData=gsAnchor.userData if gsAnchor.userData else dict(),
+        customData=dict(gsAnchor.userData) if gsAnchor.userData else dict(),
     )
     return anchor
 
@@ -1528,3 +1533,50 @@ def fontraGuidelineToGSGuide(guideline):
     gsGuide.angle = guideline.angle
     gsGuide.locked = guideline.locked
     return gsGuide
+
+
+def canParseFeatures(featureText, glyphNames):
+    featureFile = io.StringIO(featureText)
+    fea_parser = FeatureParser(
+        featureFile,
+        glyphNames=glyphNames,
+        includeDir=None,
+    )
+    try:
+        _ = fea_parser.parse()
+    except FeatureLibError:
+        return False
+    return True
+
+
+expandedFeaturesWarning = """\
+#
+# WARNING: proceed with caution!
+#
+# Fontra had to process the original feature code in either or both of these ways:
+#
+# 1. "include" statements have been expanded, and have been replaced by the *contents*
+#    of the included file(s)
+# 2. Glyphs-specific dynamic "token" syntax has been expanded to standard .fea syntax
+#
+# Editing the feature code in Fontra will write the *modified* code back to the .glyphs
+# or .glyphspackage file, destroying the original features code.
+#
+
+"""
+
+
+def expensiveGetFeatures(path):
+    gsFont = glyphsLib.classes.GSFont(path)
+
+    defaultMasterID = get_regular_master(gsFont).id
+    try:
+        featureText = glyphsLib.builder.features._to_ufo_features(
+            gsFont,
+            master=gsFont.masters[defaultMasterID],
+            expand_includes=True,
+        )
+    except FeatureLibError:
+        return None
+
+    return expandedFeaturesWarning + featureText

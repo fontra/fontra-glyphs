@@ -33,6 +33,7 @@ dataDir = pathlib.Path(__file__).resolve().parent / "data"
 glyphs2Path = dataDir / "GlyphsUnitTestSans.glyphs"
 glyphs3Path = dataDir / "GlyphsUnitTestSans3.glyphs"
 glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
+expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 
 
@@ -754,8 +755,24 @@ async def test_getFeatures(testFont, referenceFont):
     assert await testFont.getFeatures() == await referenceFont.getFeatures()
 
 
+async def test_getFeatures_with_expansion():
+    expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
+    testFont = getFileSystemBackend(expansionFontPath)
+    features = await testFont.getFeatures()
+
+    assert "WARNING" in features.text
+    assert "@TOKEN_TESTING_CLASS = [A Adieresis A-cy];" in features.text
+    assert "lookup testing_lookup {" in features.text
+
+    glyphsSource = expansionFontPath.read_text(encoding="utf-8")
+
+    assert "WARNING" not in glyphsSource
+    assert "@TOKEN_TESTING_CLASS = [A Adieresis A-cy];" not in glyphsSource
+    assert "lookup testing_lookup {" not in glyphsSource
+
+
 putFeaturesTestData = [
-    "# dummy feature date\n",
+    "# dummy feature data\n",
     """@c2sc_source = [ A
 ];
 

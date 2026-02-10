@@ -1,0 +1,5 @@
+# included comment
+
+lookup testing_lookup {
+  sub A by V;
+} testing_lookup;
