@@ -6,6 +6,7 @@ import uuid
 from contextlib import aclosing
 from copy import deepcopy
 
+import glyphsLib
 import openstep_plist
 import pytest
 from fontra.backends import getFileSystemBackend
@@ -70,6 +71,14 @@ def writableTestFont(tmpdir, request):
 @pytest.fixture
 def rtlTestFont():
     return getFileSystemBackend(rtlFontPath)
+
+
+@pytest.fixture
+def writableRTLTestFont(tmpdir):
+    srcPath = rtlFontPath
+    dstPath = tmpdir / srcPath.name
+    shutil.copy(srcPath, dstPath)
+    return getFileSystemBackend(dstPath)
 
 
 @pytest.fixture
@@ -712,7 +721,7 @@ def deleteAllKerning(kerning):
 def addUnknownSourceKerning(kerning):
     return {
         "kern": Kerning(
-            groupsSide1={}, groupsSide2={}, sourceIdentifiers=["X"], values={}
+            groupsSide1={"A": ["A"]}, groupsSide2={}, sourceIdentifiers=["X"], values={}
         )
     }
 
@@ -1265,6 +1274,37 @@ async def test_read_rtl_kerning(rtlTestFont, rtlReferenceTestFont):
     assert kerning == expectedKerning
 
 
+async def test_write_rtl_kerning(writableRTLTestFont):
+    glyphsPath = writableRTLTestFont.path
+
+    gsFont = glyphsLib.GSFont(glyphsPath)
+    kernSides = extractKernSides(gsFont)
+
+    allFontraKerning = await writableRTLTestFont.getKerning()
+
+    await writableRTLTestFont.putKerning(allFontraKerning)
+
+    reopened = getFileSystemBackend(glyphsPath)
+    reopenedKerning = await reopened.getKerning()
+    assert reopenedKerning == allFontraKerning
+
+    reopenedGSFont = glyphsLib.GSFont(glyphsPath)
+    reopenedKernSides = extractKernSides(reopenedGSFont)
+
+    assert unorderKerning(gsFont.kerning) == unorderKerning(reopenedGSFont.kerning)
+    assert unorderKerning(gsFont.kerningRTL) == unorderKerning(
+        reopenedGSFont.kerningRTL
+    )
+    assert kernSides == reopenedKernSides
+
+
+def extractKernSides(gsFont):
+    return {
+        glyph.name: (glyph.leftKerningGroup, glyph.rightKerningGroup)
+        for glyph in gsFont.glyphs
+    }
+
+
 def sortKernGroups(kerning):
     for kernTable in kerning.values():
         sortGroups(kernTable.groupsSide1)
@@ -1274,3 +1314,10 @@ def sortKernGroups(kerning):
 def sortGroups(groups):
     for k, v in groups.items():
         v.sort()
+
+
+def unorderKerning(kerning):
+    return {
+        masterID: {left: dict(leftDict) for left, leftDict in masterKerning.items()}
+        for masterID, masterKerning in kerning.items()
+    }
