@@ -1,0 +1,17 @@
+{
+"name": "shin.fina",
+"sources": [
+{
+"name": "",
+"layerName": "m001",
+"locationBase": "m001"
+}
+],
+"layers": {
+"m001": {
+"glyph": {
+"xAdvance": 500
+}
+}
+}
+}
