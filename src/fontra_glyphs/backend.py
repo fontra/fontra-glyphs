@@ -349,20 +349,37 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
     async def getKerning(self) -> dict[str, Kerning]:
         # TODO: RTL kerning: https://docu.glyphsapp.com/#GSFont.kerningRTL
-        kerningLTR = self._gsKerningToFontraKerning("kerning", "left", "right")
-        kerningVertical = self._gsKerningToFontraKerning(
+        kerningLTR = await self._gsKerningToFontraKerning("kerning", "left", "right")
+        kerningRTL = kernutils.flipKerningDirection(
+            await self._gsKerningToFontraKerning("kerningRTL", "right", "left")
+        )
+        kerningVertical = await self._gsKerningToFontraKerning(
             self._verticalKerningAttr, "top", "bottom"
         )
 
         kerning = {}
-        if kerningLTR.values or kerningLTR.groupsSide1 or kerningLTR.groupsSide2:
+
+        hasLTRKerning = bool(
+            kerningLTR.values or kerningLTR.groupsSide1 or kerningLTR.groupsSide2
+        )
+        hasRTLKerning = bool(
+            kerningRTL.values or kerningRTL.groupsSide1 or kerningRTL.groupsSide2
+        )
+
+        if hasLTRKerning and hasRTLKerning:
+            kerning["kern"] = kernutils.mergeKerning(kerningLTR, kerningRTL)
+        elif hasLTRKerning:
             kerning["kern"] = kerningLTR
+        elif hasRTLKerning:
+            kerning["kern"] = kerningRTL
+
         if (
             kerningVertical.values
             or kerningVertical.groupsSide1
             or kerningVertical.groupsSide2
         ):
             kerning["vkrn"] = kerningVertical
+
         return kerning
 
     async def putKerning(self, kerning: dict[str, Kerning]) -> None:
@@ -385,7 +402,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         changedGlyphs = self._updateKerningGroups()
         self._writeFontData(changedGlyphs)
 
-    def _gsKerningToFontraKerning(
+    async def _gsKerningToFontraKerning(
         self, kerningAttr: str, side1: str, side2: str
     ) -> Kerning:
         gsPrefix1 = GS_KERN_GROUP_PREFIXES[side1]
@@ -393,6 +410,15 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
         groupsSide1 = deepcopy(dict(self.kerningGroups[side1]))
         groupsSide2 = deepcopy(dict(self.kerningGroups[side2]))
+
+        if side1 in {"left", "right"}:
+            ltrGlyphs, rtlGlyphs = await self._getGlyphClassifications()
+            if kerningAttr == "kerningRTL":
+                groupsSide1 = filterGroupsByDirection(groupsSide1, ltrGlyphs)
+                groupsSide2 = filterGroupsByDirection(groupsSide2, ltrGlyphs)
+            else:
+                groupsSide1 = filterGroupsByDirection(groupsSide1, rtlGlyphs)
+                groupsSide2 = filterGroupsByDirection(groupsSide2, rtlGlyphs)
 
         sourceIdentifiers = []
         valueDicts: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(dict))
@@ -1602,3 +1628,15 @@ def expensiveGetFeatures(path):
         return None
 
     return expandedFeaturesWarning + featureText
+
+
+def filterGroupsByDirection(groups, excludeGlyphs):
+    return {
+        groupName: glyphNames
+        for groupName, glyphNames in groups.items()
+        if includeGroup(glyphNames, excludeGlyphs)
+    }
+
+
+def includeGroup(glyphNames, excludeGlyphs):
+    return not any(gn in excludeGlyphs for gn in glyphNames)
