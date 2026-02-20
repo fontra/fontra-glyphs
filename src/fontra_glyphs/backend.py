@@ -15,6 +15,7 @@ import openstep_plist
 from fontra.backends.base import ReadableBaseBackend
 from fontra.backends.filewatcher import Change
 from fontra.backends.watchable import WatchableBackend
+from fontra.core import kernutils
 from fontra.core.classes import (
     Anchor,
     Axes,
@@ -181,6 +182,8 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.defaultLocation = {
             axis.name: axis.defaultValue for axis in axesSourceSpace
         }
+        self._cachedFeatures: OpenTypeFeatures | None = None
+        self._cachedGlyphClassifications: tuple[set[str], set[str]] | None = None
 
     def _updateRawGlyphsData(self, rawGlyphsData):
         # Fill the glyphs list with dummy placeholder glyphs
@@ -294,6 +297,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.parsedGlyphNames.discard(glyphName)
         self._updateGlyphNameToIndex()
         self._updateDeletedGlyph(glyphName)
+        self._cachedGlyphClassifications = None
 
     async def getFontInfo(self) -> FontInfo:
         infoDict = {}
@@ -344,28 +348,39 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         return "vertKerning" if self.gsFont.format_version == 2 else "kerningVertical"
 
     async def getKerning(self) -> dict[str, Kerning]:
-        # TODO: RTL kerning: https://docu.glyphsapp.com/#GSFont.kerningRTL
-        kerningLTR = self._gsKerningToFontraKerning("kerning", "left", "right")
-        kerningVertical = self._gsKerningToFontraKerning(
+        kerningLTR = await self._gsKerningToFontraKerning("kerning", "left", "right")
+        kerningRTL = kernutils.flipKerningDirection(
+            await self._gsKerningToFontraKerning("kerningRTL", "right", "left")
+        )
+        kerningVertical = await self._gsKerningToFontraKerning(
             self._verticalKerningAttr, "top", "bottom"
         )
 
         kerning = {}
-        if kerningLTR.values or kerningLTR.groupsSide1 or kerningLTR.groupsSide2:
+
+        hasLTRKerning = hasKerning(kerningLTR)
+        hasRTLKerning = hasKerning(kerningRTL)
+
+        if hasLTRKerning and hasRTLKerning:
+            kerning["kern"] = kernutils.mergeKerning(kerningLTR, kerningRTL)
+        elif hasLTRKerning:
             kerning["kern"] = kerningLTR
-        if (
-            kerningVertical.values
-            or kerningVertical.groupsSide1
-            or kerningVertical.groupsSide2
-        ):
+        elif hasRTLKerning:
+            kerning["kern"] = kerningRTL
+
+        if hasKerning(kerningVertical):
             kerning["vkrn"] = kerningVertical
+
         return kerning
 
     async def putKerning(self, kerning: dict[str, Kerning]) -> None:
         async with self._writeLock:
-            return await runInThread(self._putKerning, kerning)
+            ltrGlyphs, rtlGlyphs = await self._getGlyphClassifications()
+            return await runInThread(self._putKerning, kerning, ltrGlyphs, rtlGlyphs)
 
-    def _putKerning(self, kerning: dict[str, Kerning]) -> None:
+    def _putKerning(
+        self, kerning: dict[str, Kerning], ltrGlyph: set[str], rtlGlyphs: set[str]
+    ) -> None:
         unknownKerningTypes = set(kerning) - set(["kern", "vkrn"])
         if unknownKerningTypes:
             s = ", ".join(sorted(unknownKerningTypes))
@@ -373,7 +388,20 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
                 f"GlyphsApp Backend: '{s}' kern type(s) not supported."
             )
 
-        self._fontraKerningToGSKerning(kerning.get("kern"), "kerning", "left", "right")
+        ltrKerning = rtlKerning = None
+        hKerning = kerning.get("kern")
+        if hKerning is not None:
+            ltrKerning, rtlKerning = kernutils.splitKerningByDirection(
+                hKerning, ltrGlyph, rtlGlyphs
+            )
+            rtlKerning = kernutils.flipKerningDirection(rtlKerning)
+
+        for side, _ in GS_FORMAT_3_KERN_SIDES:
+            self.kerningGroups[side].clear()
+
+        self._fontraKerningToGSKerning(ltrKerning, "kerning", "left", "right")
+        self._fontraKerningToGSKerning(rtlKerning, "kerningRTL", "right", "left")
+
         self._fontraKerningToGSKerning(
             kerning.get("vkrn"), self._verticalKerningAttr, "top", "bottom"
         )
@@ -381,7 +409,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         changedGlyphs = self._updateKerningGroups()
         self._writeFontData(changedGlyphs)
 
-    def _gsKerningToFontraKerning(
+    async def _gsKerningToFontraKerning(
         self, kerningAttr: str, side1: str, side2: str
     ) -> Kerning:
         gsPrefix1 = GS_KERN_GROUP_PREFIXES[side1]
@@ -389,6 +417,18 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
         groupsSide1 = deepcopy(dict(self.kerningGroups[side1]))
         groupsSide2 = deepcopy(dict(self.kerningGroups[side2]))
+
+        if side1 in {"left", "right"}:
+            # Kerning is horizontal. To avoid group name conflicts we filter out
+            # groups that we know can't be relevant: for RTL kerning we filter
+            # out groups that are LTR, and vice versa.
+            ltrGlyphs, rtlGlyphs = await self._getGlyphClassifications()
+            if kerningAttr == "kerningRTL":
+                groupsSide1 = filterGroupsByDirection(groupsSide1, ltrGlyphs)
+                groupsSide2 = filterGroupsByDirection(groupsSide2, ltrGlyphs)
+            else:
+                groupsSide1 = filterGroupsByDirection(groupsSide1, rtlGlyphs)
+                groupsSide2 = filterGroupsByDirection(groupsSide2, rtlGlyphs)
 
         sourceIdentifiers = []
         valueDicts: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(dict))
@@ -430,10 +470,8 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
     def _fontraKerningToGSKerning(
         self, kerning: Kerning | None, kerningAttr: str, side1: str, side2: str
     ) -> None:
-        if kerning is None:
+        if kerning is None or not hasKerning(kerning):
             setattr(self.gsFont, kerningAttr, {})
-            self.kerningGroups[side1].clear()
-            self.kerningGroups[side2].clear()
             return
 
         if kerningAttr == "vertKerning":
@@ -475,10 +513,24 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
         setattr(self.gsFont, kerningAttr, kerningPerSource)
 
-        self.kerningGroups[side1] = deepcopy(kerning.groupsSide1)
-        self.kerningGroups[side2] = deepcopy(kerning.groupsSide2)
+        self.kerningGroups[side1] |= deepcopy(kerning.groupsSide1)
+        self.kerningGroups[side2] |= deepcopy(kerning.groupsSide2)
+
+    async def _getGlyphClassifications(self) -> tuple[set[str], set[str]]:
+        if self._cachedGlyphClassifications is None:
+            features = await self.getFeatures()
+            axes = [axis for axis in self.axes if isinstance(axis, FontAxis)]
+            self._cachedGlyphClassifications = kernutils.classifyGlyphsByDirection(
+                self.glyphMap, features.text, axes
+            )
+        return self._cachedGlyphClassifications
 
     async def getFeatures(self) -> OpenTypeFeatures:
+        if self._cachedFeatures is None:
+            self._cachedFeatures = await self._getFeatures()
+        return deepcopy(self._cachedFeatures)
+
+    async def _getFeatures(self) -> OpenTypeFeatures:
         invalidFeatures = self.gsFont.userData.get(invalidFeaturesUserDataKey)
         if invalidFeatures is not None:
             return OpenTypeFeatures(text=invalidFeatures)
@@ -492,6 +544,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         return OpenTypeFeatures(text=featureText)
 
     async def putFeatures(self, features: OpenTypeFeatures) -> None:
+        self._cachedFeatures = deepcopy(features)
         async with self._writeLock:
             return await runInThread(self._putFeatures, features)
 
@@ -522,6 +575,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
                 del self.gsFont.userData[invalidFeaturesUserDataKey]
 
         self._writeFontData()
+        self._cachedGlyphClassifications = None
 
     def _writeFontData(self, changedGlyphs=None):
         # Set self.gsFont.glyphs to an empty list temporarily, so no time is wasted on these.
@@ -720,7 +774,9 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         assert all(isinstance(cp, int) for cp in codePoints)
         assert all(source.layerName in glyph.layers for source in glyph.sources)
 
-        self.glyphMap[glyphName] = codePoints
+        if self.glyphMap.get(glyphName) != codePoints:
+            self.glyphMap[glyphName] = codePoints
+            self._cachedGlyphClassifications = None
 
         isNewGlyph = glyphName not in self.gsFont.glyphs
         # Glyph does not exist: create new one.
@@ -970,6 +1026,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
             if glyphMapChanged:
                 reloadPattern["glyphMap"] = None
+                self._cachedGlyphClassifications = None
 
             if glyphChanges or glyphMapChanged:
                 self._updateRawGlyphsData(rawGlyphsData)
@@ -1580,3 +1637,19 @@ def expensiveGetFeatures(path):
         return None
 
     return expandedFeaturesWarning + featureText
+
+
+def filterGroupsByDirection(groups, excludeGlyphs):
+    return {
+        groupName: glyphNames
+        for groupName, glyphNames in groups.items()
+        if includeGroup(glyphNames, excludeGlyphs)
+    }
+
+
+def includeGroup(glyphNames, excludeGlyphs):
+    return not any(gn in excludeGlyphs for gn in glyphNames)
+
+
+def hasKerning(kerning):
+    return bool(kerning.values or kerning.groupsSide1 or kerning.groupsSide2)

@@ -6,6 +6,7 @@ import uuid
 from contextlib import aclosing
 from copy import deepcopy
 
+import glyphsLib
 import openstep_plist
 import pytest
 from fontra.backends import getFileSystemBackend
@@ -35,6 +36,7 @@ glyphs3Path = dataDir / "GlyphsUnitTestSans3.glyphs"
 glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
 expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
+rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -62,6 +64,19 @@ def writableTestFont(tmpdir, request):
         shutil.copytree(srcPath, dstPath)
     else:
         shutil.copy(srcPath, dstPath)
+    return getFileSystemBackend(dstPath)
+
+
+@pytest.fixture
+def rtlTestFont():
+    return getFileSystemBackend(rtlFontPath)
+
+
+@pytest.fixture
+def writableRTLTestFont(tmpdir):
+    srcPath = rtlFontPath
+    dstPath = tmpdir / srcPath.name
+    shutil.copy(srcPath, dstPath)
     return getFileSystemBackend(dstPath)
 
 
@@ -700,7 +715,7 @@ def deleteAllKerning(kerning):
 def addUnknownSourceKerning(kerning):
     return {
         "kern": Kerning(
-            groupsSide1={}, groupsSide2={}, sourceIdentifiers=["X"], values={}
+            groupsSide1={"A": ["A"]}, groupsSide2={}, sourceIdentifiers=["X"], values={}
         )
     }
 
@@ -1032,3 +1047,645 @@ async def test_deleteUnknownGlyph(writableTestFont):
     assert glyphName not in glyphMap
     # Should *not* raise an exception
     await writableTestFont.deleteGlyph(glyphName)
+
+
+async def test_glyphClassifications(rtlTestFont):
+    expectedLTRGlyphs = {
+        "A",
+        "B",
+        "C",
+        "O",
+        "T",
+        "V",
+        "W",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "four",
+        "four.denominator",
+        "four.numerator",
+        "four.tlf",
+        "fourinferior",
+        "foursuperior",
+        "o",
+        "one",
+        "one.denominator",
+        "one.numerator",
+        "one.tlf",
+        "oneinferior",
+        "onesuperior",
+        "ordfeminine",
+        "ordmasculine",
+        "three",
+        "three.denominator",
+        "three.numerator",
+        "three.tlf",
+        "threeinferior",
+        "threesuperior",
+        "two",
+        "two.denominator",
+        "two.numerator",
+        "two.tlf",
+        "twoinferior",
+        "twosuperior",
+        "v",
+        "w",
+        "z",
+        "zero",
+        "zero.denominator",
+        "zero.numerator",
+        "zero.tlf",
+        "zeroinferior",
+        "zerosuperior",
+    }
+    expectedRTLGlyphs = {
+        "alef",
+        "alef.fina",
+        "alef.isol",
+        "alefHamzeAbove",
+        "alefHamzeAbove.fina",
+        "alefHamzeAbove.isol",
+        "alefHamzeBelow",
+        "alefHamzeBelow.fina",
+        "alefHamzeBelow.isol",
+        "alefMaghsureh",
+        "alefMaghsureh.alt",
+        "alefMaghsureh.fina",
+        "alefMaghsureh.fina.alt",
+        "alefMaghsureh.isol",
+        "alefMaghsureh.isol.alt",
+        "allah",
+        "beh",
+        "beh.fina",
+        "beh.init",
+        "beh.isol",
+        "beh.medi",
+        "dal",
+        "dal.fina",
+        "dal.isol",
+        "eyn",
+        "eyn.alt",
+        "eyn.fina",
+        "eyn.fina.alt",
+        "eyn.fina.jump.alt",
+        "eyn.init",
+        "eyn.init.alt",
+        "eyn.isol",
+        "eyn.isol.alt",
+        "eyn.medi",
+        "feh",
+        "feh.fina",
+        "feh.init",
+        "feh.isol",
+        "feh.medi",
+        "ghaf",
+        "ghaf.fina",
+        "ghaf.init",
+        "ghaf.isol",
+        "ghaf.medi",
+        "hah",
+        "hah.alt",
+        "hah.fina",
+        "hah.fina.alt",
+        "hah.init",
+        "hah.init.alt",
+        "hah.isol",
+        "hah.isol.alt",
+        "hah.medi",
+        "hah.medi.alt",
+        "heh",
+        "heh.fina",
+        "heh.init",
+        "heh.isol",
+        "heh.medi",
+        "jim",
+        "jim.alt",
+        "jim.fina",
+        "jim.fina.alt",
+        "jim.init",
+        "jim.init.alt",
+        "jim.isol",
+        "jim.isol.alt",
+        "jim.medi",
+        "jim.medi.alt",
+        "kafArabic",
+        "kafArabic.fina",
+        "kafArabic.init",
+        "kafArabic.isol",
+        "kafArabic.medi",
+        "kheh",
+        "kheh.fina",
+        "kheh.init",
+        "kheh.isol",
+        "kheh.medi",
+        "lam",
+        "lam.fina",
+        "lam.init",
+        "lam.init_alef.fina",
+        "lam.init_alefHamzeAbove.fina",
+        "lam.init_alefHamzeBelow.fina",
+        "lam.isol",
+        "lam.medi",
+        "lam.medi_alef.fina",
+        "lam.medi_alefHamzeAbove.fina",
+        "lam.medi_alefHamzeBelow.fina",
+        "mim",
+        "mim.fina",
+        "mim.init",
+        "mim.isol",
+        "mim.medi",
+        "noon",
+        "noon.fina",
+        "noon.init",
+        "noon.isol",
+        "noon.medi",
+        "reh",
+        "reh.fina",
+        "reh.isol",
+        "sad",
+        "sad.fina",
+        "sad.init",
+        "sad.isol",
+        "sad.medi",
+        "shin",
+        "shin.fina",
+        "shin.init",
+        "shin.isol",
+        "shin.medi",
+        "sin",
+        "sin.fina",
+        "sin.init",
+        "sin.isol",
+        "sin.medi",
+        "ta",
+        "ta.fina",
+        "ta.init",
+        "ta.isol",
+        "ta.medi",
+        "teh",
+        "teh.fina",
+        "teh.init",
+        "teh.isol",
+        "teh.medi",
+        "tehArabic",
+        "tehArabic.fina",
+        "tehArabic.isol",
+        "unencodedrtlglyph",
+        "vav",
+        "vav.fina",
+        "vav.isol",
+        "yehArabic",
+        "yehArabic.fina",
+        "yehArabic.init",
+        "yehArabic.isol",
+        "yehArabic.medi",
+        "zad",
+        "zad.fina",
+        "zad.init",
+        "zad.isol",
+        "zad.medi",
+        "zal",
+        "zal.fina",
+        "zal.isol",
+        "zeh",
+        "zeh.fina",
+        "zeh.isol",
+    }
+
+    ltrGlyphs, rtlGlyphs = await rtlTestFont._getGlyphClassifications()
+    assert (ltrGlyphs, rtlGlyphs) == (expectedLTRGlyphs, expectedRTLGlyphs)
+
+
+expectedKerning = {
+    "kern": Kerning(
+        groupsSide1={
+            "A": ["A"],
+            "C": ["C"],
+            "O": ["O"],
+            "T": ["T"],
+            "W": ["W"],
+            "a": ["a"],
+            "c": ["c"],
+            "d": ["d"],
+            "dal.isol": ["dal.isol", "zal.isol"],
+            "dotlessBeh": ["beh.isol", "teh.isol"],
+            "e": ["e"],
+            "eyn.init": ["eyn.init"],
+            "eyn.init.alt": ["eyn.init.alt"],
+            "feh.isol": ["feh.init", "feh.isol"],
+            "heh.init": ["heh.init"],
+            "heh.isol": ["heh.isol"],
+            "hyphen": ["hyphen"],
+            "hyphen.case": ["hyphen.case"],
+            "jim.init": ["hah.init", "jim.init", "kheh.init"],
+            "jim.init.alt": ["hah.init.alt", "jim.init.alt"],
+            "jim.isol": ["hah.isol", "jim.isol", "kheh.isol"],
+            "jim.isol.alt": ["hah.isol.alt", "jim.isol.alt"],
+            "kafArabic.init": ["kafArabic.init"],
+            "mim.isol": ["mim.init", "mim.isol"],
+            "noonGhuna.isol": ["noon.isol"],
+            "o": ["b", "o"],
+            "period": ["period"],
+            "sad.isol": ["sad.init", "sad.isol", "zad.init", "zad.isol"],
+            "sin.isol": ["shin.init", "shin.isol", "sin.init", "sin.isol"],
+            "ta.isol": ["ta.init", "ta.isol"],
+            "theh.init": ["teh.init"],
+            "w": ["w"],
+            "yeh.isol": ["alefMaghsureh.isol", "yehArabic.isol"],
+            "yeh.isol.alt": ["alefMaghsureh.isol.alt", "yeh.isol.alt"],
+            "z": ["z"],
+        },
+        groupsSide2={
+            "A": ["A"],
+            "O": ["C", "O"],
+            "T": ["T"],
+            "W": ["W"],
+            "alefHamzeAbove.fina": ["alefHamzeAbove.fina"],
+            "dotlessBeh": ["beh.fina", "beh.isol", "teh.fina", "teh.isol"],
+            "eyn.fina": ["eyn.fina"],
+            "eyn.fina.alt": ["eyn.fina.alt", "eyn.fina.jump.alt"],
+            "eyn.isol": ["eyn.isol"],
+            "eyn.isol.alt": ["eyn.isol.alt"],
+            "feh.isol": ["feh.fina", "feh.isol"],
+            "h": ["b"],
+            "heh.fina": ["heh.fina", "tehArabic.fina"],
+            "heh.isol": ["heh.isol"],
+            "hyphen": ["hyphen"],
+            "hyphen.case": ["hyphen.case"],
+            "jim.isol": [
+                "hah.fina",
+                "hah.isol",
+                "jim.fina",
+                "jim.isol",
+                "kheh.fina",
+                "kheh.isol",
+            ],
+            "jim.isol.alt": [
+                "hah.fina.alt",
+                "hah.isol.alt",
+                "jim.fina.alt",
+                "jim.isol.alt",
+            ],
+            "kafArabic.isol": ["kafArabic.fina", "kafArabic.isol"],
+            "lam.init_alef.fina": ["lam.init_alef.fina", "lam.medi_alef.fina"],
+            "lam.init_alefHamzeAbove.fina": [
+                "lam.init_alefHamzeAbove.fina",
+                "lam.medi_alefHamzeAbove.fina",
+            ],
+            "lam.init_alefHamzeBelow.fina": [
+                "lam.init_alefHamzeBelow.fina",
+                "lam.medi_alefHamzeBelow.fina",
+            ],
+            "o": ["a", "c", "d", "e", "o"],
+            "period": ["period"],
+            "reh.isol": ["reh.fina", "reh.isol"],
+            "w": ["w"],
+            "yeh.isol": [
+                "alefMaghsureh.fina",
+                "alefMaghsureh.isol",
+                "yehArabic.fina",
+                "yehArabic.isol",
+            ],
+            "yeh.isol.alt": [
+                "alefMaghsureh.fina.alt",
+                "alefMaghsureh.isol.alt",
+                "yeh.fina.alt",
+                "yeh.isol.alt",
+            ],
+            "z": ["z"],
+            "zeh.isol": ["zeh.fina", "zeh.isol"],
+        },
+        sourceIdentifiers=["m001"],
+        values={
+            "B": {"@period": [-25]},
+            "V": {
+                "@A": [-53],
+                "@hyphen": [-59],
+                "@hyphen.case": [-24],
+                "@o": [-47],
+                "@period": [-79],
+            },
+            "@A": {
+                "V": [-15],
+                "@O": [-36],
+                "@T": [-96],
+                "@W": [-13],
+                "@hyphen": [-39],
+                "@hyphen.case": [-55],
+                "@w": [-31],
+                "v": [-41],
+            },
+            "@C": {"@hyphen.case": [-65], "@period": [-35]},
+            "@O": {"V": [-32], "@A": [-13], "@T": [-54], "@W": [-11], "@period": [-73]},
+            "@T": {
+                "@A": [-76],
+                "@O": [-33],
+                "@hyphen": [-59],
+                "@hyphen.case": [-63],
+                "@o": [-102],
+                "@period": [-94],
+                "@w": [-80],
+                "@z": [-83],
+                "v": [-98],
+            },
+            "@W": {
+                "@A": [-23],
+                "@hyphen": [-62],
+                "@hyphen.case": [-27],
+                "@o": [-53],
+                "@period": [-71],
+            },
+            "@a": {
+                "V": [-24],
+                "@O": [-19],
+                "@T": [-78],
+                "@W": [-24],
+                "@w": [-27],
+                "v": [-12],
+            },
+            "@c": {
+                "V": [-34],
+                "@T": [-84],
+                "@W": [-42],
+                "@w": [-36],
+                "@z": [-35],
+                "v": [-31],
+            },
+            "@d": {"@w": [-12], "v": [-25]},
+            "@e": {"V": [-39], "@T": [-85], "@W": [-33], "v": [-18]},
+            "@hyphen": {"V": [-42], "@A": [-28], "@T": [-53], "@W": [-52]},
+            "@hyphen.case": {"V": [-29], "@A": [-40], "@T": [-61], "@W": [-50]},
+            "@o": {"V": [-52], "@T": [-107], "@W": [-59], "@w": [-20], "v": [-53]},
+            "@period": {
+                "V": [-76],
+                "one": [-76],
+                "@O": [-71],
+                "@T": [-94],
+                "@W": [-70],
+                "@period": [-58],
+                "@w": [-65],
+                "v": [-80],
+            },
+            "@w": {
+                "@A": [-32],
+                "@T": [-69],
+                "@h": [-18],
+                "@o": [-31],
+                "@period": [-47],
+            },
+            "@z": {"@T": [-97], "@h": [-18], "@o": [-22]},
+            "two": {"four": [-34]},
+            "v": {"@A": [-37], "@T": [-86], "@h": [-21], "@o": [-52], "@period": [-79]},
+            "@jim.isol.alt": {
+                "@alefHamzeAbove.fina": [-12],
+                "@eyn.fina.alt": [-128],
+                "@heh.fina": [-28],
+                "@heh.isol": [-21],
+                "@kafArabic.isol": [-27],
+                "@lam.init_alef.fina": [-94],
+                "@lam.init_alefHamzeAbove.fina": [-86],
+                "tehArabic.isol": [-17],
+            },
+            "@yeh.isol": {
+                "@alefHamzeAbove.fina": [-35],
+                "@dotlessBeh": [-79],
+                "@eyn.fina.alt": [-228],
+                "@feh.isol": [-89],
+                "@heh.fina": [-208],
+                "@heh.isol": [-142],
+                "@kafArabic.isol": [-155],
+                "@lam.init_alef.fina": [-74],
+                "@lam.init_alefHamzeAbove.fina": [-78],
+                "@yeh.isol": [-47],
+                "tehArabic.isol": [-156],
+            },
+            "lam.init": {
+                "@eyn.fina": [-13],
+                "@eyn.isol": [-18],
+                "@eyn.isol.alt": [-35],
+                "@reh.isol": [-36],
+                "@yeh.isol.alt": [-174],
+            },
+            "noon.init": {
+                "@eyn.fina": [-23],
+                "@eyn.isol": [-10],
+                "@eyn.isol.alt": [-13],
+                "@reh.isol": [-33],
+                "@yeh.isol.alt": [-137],
+            },
+            "@heh.isol": {
+                "@eyn.fina": [-28],
+                "@eyn.isol": [-26],
+                "@eyn.isol.alt": [-21],
+                "@jim.isol.alt": [-20],
+                "@lam.init_alef.fina": [-17],
+                "@lam.init_alefHamzeAbove.fina": [-14],
+                "@lam.init_alefHamzeBelow.fina": [-30],
+                "@reh.isol": [-20],
+                "@yeh.isol.alt": [-226],
+            },
+            "@mim.isol": {
+                "@eyn.fina": [-27],
+                "@eyn.isol": [-36],
+                "@eyn.isol.alt": [-18],
+                "@jim.isol": [-13],
+                "@jim.isol.alt": [-7],
+                "@lam.init_alef.fina": [-11],
+                "@lam.init_alefHamzeAbove.fina": [-22],
+                "@lam.init_alefHamzeBelow.fina": [-8],
+                "@reh.isol": [-26],
+                "@yeh.isol.alt": [-229],
+            },
+            "@sad.isol": {
+                "@eyn.fina": [-22],
+                "@reh.isol": [-34],
+                "@yeh.isol.alt": [-232],
+            },
+            "@theh.init": {
+                "@eyn.fina": [-29],
+                "@eyn.isol": [-32],
+                "@eyn.isol.alt": [-31],
+                "@reh.isol": [-22],
+                "@yeh.isol.alt": [-66],
+            },
+            "tehArabic.isol": {
+                "@eyn.fina": [-37],
+                "@eyn.isol": [-24],
+                "@eyn.isol.alt": [-29],
+                "@jim.isol.alt": [-48],
+                "@lam.init_alef.fina": [-26],
+                "@lam.init_alefHamzeBelow.fina": [-10],
+                "@reh.isol": [-30],
+                "@yeh.isol.alt": [-214],
+            },
+            "@eyn.init": {
+                "@eyn.fina.alt": [-26],
+                "@reh.isol": [-31],
+                "@yeh.isol.alt": [-246],
+                "@zeh.isol": [-31],
+            },
+            "@jim.init": {
+                "@eyn.fina.alt": [-101],
+                "@reh.isol": [-44],
+                "@yeh.isol.alt": [-236],
+                "@zeh.isol": [-39],
+            },
+            "@jim.init.alt": {
+                "@eyn.fina.alt": [-75],
+                "@lam.init_alef.fina": [-33],
+                "@lam.init_alefHamzeAbove.fina": [-36],
+                "@reh.isol": [-65],
+                "@yeh.isol.alt": [-191],
+                "@zeh.isol": [-58],
+            },
+            "@jim.isol": {"@eyn.fina.alt": [-96]},
+            "@yeh.isol.alt": {
+                "@eyn.fina.alt": [-63],
+                "@reh.isol": [-42],
+                "@yeh.isol.alt": [-156],
+                "@zeh.isol": [-32],
+            },
+            "reh.isol": {
+                "@eyn.fina.alt": [-103],
+                "@heh.fina": [-29],
+                "@kafArabic.isol": [-11],
+            },
+            "zeh.isol": {
+                "@eyn.fina.alt": [-19],
+                "@heh.fina": [-14],
+                "@kafArabic.isol": [-20],
+            },
+            "unencodedrtlglyph": {"@period": [-49]},
+            "beh.init": {"@reh.isol": [-27]},
+            "ghaf.init": {"@reh.isol": [-37], "@yeh.isol.alt": [-222]},
+            "lam.init_alef.fina": {
+                "@reh.isol": [-34],
+                "@yeh.isol.alt": [-237],
+                "@zeh.isol": [-29],
+            },
+            "lam.init_alefHamzeAbove.fina": {
+                "@reh.isol": [-37],
+                "@yeh.isol.alt": [-241],
+                "@zeh.isol": [-39],
+            },
+            "lam.init_alefHamzeBelow.fina": {
+                "@reh.isol": [-38],
+                "@yeh.isol.alt": [-244],
+                "@zeh.isol": [-29],
+            },
+            "@dal.isol": {
+                "@reh.isol": [-21],
+                "@yeh.isol.alt": [-227],
+                "@zeh.isol": [-29],
+            },
+            "@dotlessBeh": {"@reh.isol": [-28], "@yeh.isol.alt": [-223]},
+            "@eyn.init.alt": {
+                "@reh.isol": [-46],
+                "@yeh.isol.alt": [-253],
+                "@zeh.isol": [-36],
+            },
+            "@feh.isol": {"@reh.isol": [-36], "@yeh.isol.alt": [-234]},
+            "@heh.init": {"@reh.isol": [-35], "@yeh.isol.alt": [-211]},
+            "@kafArabic.init": {"@reh.isol": [-12], "@yeh.isol.alt": [-238]},
+            "@noonGhuna.isol": {"@reh.isol": [-21], "@yeh.isol.alt": [-97]},
+            "@sin.isol": {"@reh.isol": [-51], "@yeh.isol.alt": [-221]},
+            "@ta.isol": {"@reh.isol": [-21], "@yeh.isol.alt": [-218]},
+            "vav.isol": {"@reh.isol": [-31]},
+        },
+    )
+}
+
+
+async def test_read_rtl_kerning(rtlTestFont):
+    kerning = await rtlTestFont.getKerning()
+    sortKernGroups(kerning)
+
+    assert kerning == expectedKerning
+
+
+async def test_write_rtl_kerning(writableRTLTestFont):
+    glyphsPath = writableRTLTestFont.path
+
+    gsFont = glyphsLib.GSFont(glyphsPath)
+    kernSides = extractKernSides(gsFont)
+
+    allFontraKerning = await writableRTLTestFont.getKerning()
+
+    await writableRTLTestFont.putKerning(allFontraKerning)
+
+    reopened = getFileSystemBackend(glyphsPath)
+    reopenedKerning = await reopened.getKerning()
+    assert reopenedKerning == allFontraKerning
+
+    reopenedGSFont = glyphsLib.GSFont(glyphsPath)
+    reopenedKernSides = extractKernSides(reopenedGSFont)
+
+    assert unorderKerning(gsFont.kerning) == unorderKerning(reopenedGSFont.kerning)
+    assert unorderKerning(gsFont.kerningRTL) == unorderKerning(
+        reopenedGSFont.kerningRTL
+    )
+    assert kernSides == reopenedKernSides
+
+
+async def test_modify_kerning(writableRTLTestFont):
+    glyphsPath = writableRTLTestFont.path
+
+    gsFont = glyphsLib.GSFont(glyphsPath)
+    kernSides = extractKernSides(gsFont)
+    gsKerningLTR = gsFont.kerning
+    gsKerningRTL = gsFont.kerningRTL
+
+    kerning = await writableRTLTestFont.getKerning()
+
+    assert "B" not in kerning["kern"].groupsSide1
+    kerning["kern"].groupsSide1["B"] = ["B"]
+    kerning["kern"].groupsSide1["commaArabic"] = ["commaArabic"]
+    kerning["kern"].values["@B"] = {"C": [-50]}
+    kerning["kern"].values["@commaArabic"] = {"alef": [-75]}
+
+    kernSides["B"] = (None, "B")
+    kernSides["commaArabic"] = (None, "commaArabic")
+    gsKerningLTR["m001"]["@MMK_L_B"] = {"C": -50}
+    gsKerningRTL["m001"]["alef"] = {"@MMK_L_commaArabic": -75}
+
+    await writableRTLTestFont.putKerning(kerning)
+
+    reopened = getFileSystemBackend(glyphsPath)
+    reopenedKerning = await reopened.getKerning()
+
+    assert kerning == reopenedKerning
+
+    reopenedGSFont = glyphsLib.GSFont(glyphsPath)
+    reopenedKernSides = extractKernSides(reopenedGSFont)
+
+    assert unorderKerning(gsKerningLTR) == unorderKerning(reopenedGSFont.kerning)
+    assert unorderKerning(gsKerningRTL) == unorderKerning(reopenedGSFont.kerningRTL)
+    assert kernSides == reopenedKernSides
+
+
+def extractKernSides(gsFont):
+    return {
+        glyph.name: (glyph.leftKerningGroup, glyph.rightKerningGroup)
+        for glyph in gsFont.glyphs
+        if glyph.leftKerningGroup or glyph.rightKerningGroup
+    }
+
+
+def sortKernGroups(kerning):
+    for kernTable in kerning.values():
+        sortGroups(kernTable.groupsSide1)
+        sortGroups(kernTable.groupsSide2)
+
+
+def sortGroups(groups):
+    for k, v in groups.items():
+        v.sort()
+
+
+def unorderKerning(kerning):
+    return {
+        masterID: {left: dict(leftDict) for left, leftDict in masterKerning.items()}
+        for masterID, masterKerning in kerning.items()
+    }
