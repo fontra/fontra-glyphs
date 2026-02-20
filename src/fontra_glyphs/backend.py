@@ -419,6 +419,9 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         groupsSide2 = deepcopy(dict(self.kerningGroups[side2]))
 
         if side1 in {"left", "right"}:
+            # Kerning is horizontal. To avoid group name conflicts we filter out
+            # groups that we know can't be relevant: for RTL kerning we filter
+            # out groups that are LTR, and vice versa.
             ltrGlyphs, rtlGlyphs = await self._getGlyphClassifications()
             if kerningAttr == "kerningRTL":
                 groupsSide1 = filterGroupsByDirection(groupsSide1, ltrGlyphs)
