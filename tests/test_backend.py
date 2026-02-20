@@ -36,6 +36,7 @@ glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
 expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
+rtlReferenceFontPath = dataDir / "right-to-left-kerning.fontra"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -69,6 +70,11 @@ def writableTestFont(tmpdir, request):
 @pytest.fixture
 def rtlTestFont():
     return getFileSystemBackend(rtlFontPath)
+
+
+@pytest.fixture
+def rtlReferenceTestFont():
+    return getFileSystemBackend(rtlReferenceFontPath)
 
 
 expectedAxes = structure(
@@ -1247,3 +1253,24 @@ async def test_glyphClassifications(rtlTestFont):
 
     ltrGlyphs, rtlGlyphs = await rtlTestFont._getGlyphClassifications()
     assert (ltrGlyphs, rtlGlyphs) == (expectedLTRGlyphs, expectedRTLGlyphs)
+
+
+async def test_read_rtl_kerning(rtlTestFont, rtlReferenceTestFont):
+    kerning = await rtlTestFont.getKerning()
+    sortKernGroups(kerning)
+
+    expectedKerning = await rtlReferenceTestFont.getKerning()
+    sortKernGroups(expectedKerning)
+
+    assert kerning == expectedKerning
+
+
+def sortKernGroups(kerning):
+    for kernTable in kerning.values():
+        sortGroups(kernTable.groupsSide1)
+        sortGroups(kernTable.groupsSide2)
+
+
+def sortGroups(groups):
+    for k, v in groups.items():
+        v.sort()
