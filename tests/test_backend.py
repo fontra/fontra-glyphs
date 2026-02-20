@@ -1298,10 +1298,47 @@ async def test_write_rtl_kerning(writableRTLTestFont):
     assert kernSides == reopenedKernSides
 
 
+async def test_modify_kerning(writableRTLTestFont):
+    glyphsPath = writableRTLTestFont.path
+
+    gsFont = glyphsLib.GSFont(glyphsPath)
+    kernSides = extractKernSides(gsFont)
+    gsKerningLTR = gsFont.kerning
+    gsKerningRTL = gsFont.kerningRTL
+
+    kerning = await writableRTLTestFont.getKerning()
+
+    assert "B" not in kerning["kern"].groupsSide1
+    kerning["kern"].groupsSide1["B"] = ["B"]
+    kerning["kern"].groupsSide1["commaArabic"] = ["commaArabic"]
+    kerning["kern"].values["@B"] = {"C": [-50]}
+    kerning["kern"].values["@commaArabic"] = {"alef": [-75]}
+
+    kernSides["B"] = (None, "B")
+    kernSides["commaArabic"] = (None, "commaArabic")
+    gsKerningLTR["m001"]["@MMK_L_B"] = {"C": -50}
+    gsKerningRTL["m001"]["alef"] = {"@MMK_L_commaArabic": -75}
+
+    await writableRTLTestFont.putKerning(kerning)
+
+    reopened = getFileSystemBackend(glyphsPath)
+    reopenedKerning = await reopened.getKerning()
+
+    assert kerning == reopenedKerning
+
+    reopenedGSFont = glyphsLib.GSFont(glyphsPath)
+    reopenedKernSides = extractKernSides(reopenedGSFont)
+
+    assert unorderKerning(gsKerningLTR) == unorderKerning(reopenedGSFont.kerning)
+    assert unorderKerning(gsKerningRTL) == unorderKerning(reopenedGSFont.kerningRTL)
+    assert kernSides == reopenedKernSides
+
+
 def extractKernSides(gsFont):
     return {
         glyph.name: (glyph.leftKerningGroup, glyph.rightKerningGroup)
         for glyph in gsFont.glyphs
+        if glyph.leftKerningGroup or glyph.rightKerningGroup
     }
 
 
