@@ -348,7 +348,6 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         return "vertKerning" if self.gsFont.format_version == 2 else "kerningVertical"
 
     async def getKerning(self) -> dict[str, Kerning]:
-        # TODO: RTL kerning: https://docu.glyphsapp.com/#GSFont.kerningRTL
         kerningLTR = await self._gsKerningToFontraKerning("kerning", "left", "right")
         kerningRTL = kernutils.flipKerningDirection(
             await self._gsKerningToFontraKerning("kerningRTL", "right", "left")
