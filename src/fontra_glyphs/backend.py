@@ -15,6 +15,7 @@ import openstep_plist
 from fontra.backends.base import ReadableBaseBackend
 from fontra.backends.filewatcher import Change
 from fontra.backends.watchable import WatchableBackend
+from fontra.core import kernutils
 from fontra.core.classes import (
     Anchor,
     Axes,
@@ -181,7 +182,8 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.defaultLocation = {
             axis.name: axis.defaultValue for axis in axesSourceSpace
         }
-        self._cachedFeatures = None
+        self._cachedFeatures: OpenTypeFeatures | None = None
+        self._cachedGlyphClassifications: tuple[set[str], set[str]] = None
 
     def _updateRawGlyphsData(self, rawGlyphsData):
         # Fill the glyphs list with dummy placeholder glyphs
@@ -295,6 +297,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.parsedGlyphNames.discard(glyphName)
         self._updateGlyphNameToIndex()
         self._updateDeletedGlyph(glyphName)
+        self._cachedGlyphClassifications = None
 
     async def getFontInfo(self) -> FontInfo:
         infoDict = {}
@@ -479,6 +482,14 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.kerningGroups[side1] = deepcopy(kerning.groupsSide1)
         self.kerningGroups[side2] = deepcopy(kerning.groupsSide2)
 
+    async def _getGlyphClassifications(self) -> tuple[set[str], set[str]]:
+        if self._cachedGlyphClassifications is None:
+            features = await self.getFeatures()
+            self._cachedGlyphClassifications = kernutils.classifyGlyphsByDirection(
+                self.glyphMap, features.text, self.axes
+            )
+        return self._cachedGlyphClassifications
+
     async def getFeatures(self) -> OpenTypeFeatures:
         if self._cachedFeatures is None:
             self._cachedFeatures = await self._getFeatures()
@@ -529,6 +540,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
                 del self.gsFont.userData[invalidFeaturesUserDataKey]
 
         self._writeFontData()
+        self._cachedGlyphClassifications = None
 
     def _writeFontData(self, changedGlyphs=None):
         # Set self.gsFont.glyphs to an empty list temporarily, so no time is wasted on these.
@@ -727,7 +739,9 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         assert all(isinstance(cp, int) for cp in codePoints)
         assert all(source.layerName in glyph.layers for source in glyph.sources)
 
-        self.glyphMap[glyphName] = codePoints
+        if self.glyphMap.get(glyphName) != codePoints:
+            self.glyphMap[glyphName] = codePoints
+            self._cachedGlyphClassifications = None
 
         isNewGlyph = glyphName not in self.gsFont.glyphs
         # Glyph does not exist: create new one.
@@ -977,6 +991,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
             if glyphMapChanged:
                 reloadPattern["glyphMap"] = None
+                self._cachedGlyphClassifications = None
 
             if glyphChanges or glyphMapChanged:
                 self._updateRawGlyphsData(rawGlyphsData)
