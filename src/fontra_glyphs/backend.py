@@ -181,6 +181,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.defaultLocation = {
             axis.name: axis.defaultValue for axis in axesSourceSpace
         }
+        self._cachedFeatures = None
 
     def _updateRawGlyphsData(self, rawGlyphsData):
         # Fill the glyphs list with dummy placeholder glyphs
@@ -479,6 +480,11 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self.kerningGroups[side2] = deepcopy(kerning.groupsSide2)
 
     async def getFeatures(self) -> OpenTypeFeatures:
+        if self._cachedFeatures is None:
+            self._cachedFeatures = await self._getFeatures()
+        return deepcopy(self._cachedFeatures)
+
+    async def _getFeatures(self) -> OpenTypeFeatures:
         invalidFeatures = self.gsFont.userData.get(invalidFeaturesUserDataKey)
         if invalidFeatures is not None:
             return OpenTypeFeatures(text=invalidFeatures)
@@ -492,6 +498,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         return OpenTypeFeatures(text=featureText)
 
     async def putFeatures(self, features: OpenTypeFeatures) -> None:
+        self._cachedFeatures = deepcopy(features)
         async with self._writeLock:
             return await runInThread(self._putFeatures, features)
 
