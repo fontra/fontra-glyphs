@@ -633,7 +633,7 @@ unicode = 65264;
 },
 {
 glyphname = alefMaghsureh.fina.alt;
-kernRight = yeh.isol.alt;
+kernLeft = yeh.isol.alt;
 layers = (
 {
 layerId = m001;
@@ -848,7 +848,7 @@ unicode = 65226;
 },
 {
 glyphname = eyn.fina.alt;
-kernRight = eyn.fina.alt;
+kernLeft = eyn.fina.alt;
 layers = (
 {
 layerId = m001;
@@ -858,7 +858,7 @@ width = 500;
 },
 {
 glyphname = eyn.fina.jump.alt;
-kernRight = eyn.fina.alt;
+kernLeft = eyn.fina.alt;
 layers = (
 {
 layerId = m001;
@@ -879,7 +879,7 @@ unicode = 65227;
 },
 {
 glyphname = eyn.init.alt;
-kernLeft = eyn.init.alt;
+kernRight = eyn.init.alt;
 layers = (
 {
 layerId = m001;
@@ -900,7 +900,7 @@ unicode = 65225;
 },
 {
 glyphname = eyn.isol.alt;
-kernRight = eyn.isol.alt;
+kernLeft = eyn.isol.alt;
 layers = (
 {
 layerId = m001;
@@ -1131,7 +1131,7 @@ unicode = 65186;
 },
 {
 glyphname = hah.fina.alt;
-kernRight = jim.isol.alt;
+kernLeft = jim.isol.alt;
 layers = (
 {
 layerId = m001;
@@ -1152,7 +1152,7 @@ unicode = 65187;
 },
 {
 glyphname = hah.init.alt;
-kernLeft = jim.init.alt;
+kernRight = jim.init.alt;
 layers = (
 {
 layerId = m001;
@@ -1311,7 +1311,7 @@ unicode = 65182;
 },
 {
 glyphname = jim.fina.alt;
-kernRight = jim.isol.alt;
+kernLeft = jim.isol.alt;
 layers = (
 {
 layerId = m001;
@@ -1332,7 +1332,7 @@ unicode = 65183;
 },
 {
 glyphname = jim.init.alt;
-kernLeft = jim.init.alt;
+kernRight = jim.init.alt;
 layers = (
 {
 layerId = m001;
@@ -2568,7 +2568,7 @@ width = 500;
 },
 {
 glyphname = yeh.fina.alt;
-kernRight = yeh.isol.alt;
+kernLeft = yeh.isol.alt;
 layers = (
 {
 layerId = m001;
@@ -2636,32 +2636,6 @@ v = -25;
 "@MMK_R_T" = -97;
 "@MMK_R_h" = -18;
 };
-"@MMK_L_yeh.isol.alt" = {
-"@MMK_R_mim.isol" = -229;
-"@MMK_R_sin.isol" = -221;
-"@MMK_R_theh.init" = -66;
-lam.init_alefHamzeAbove.fina = -241;
-"@MMK_R_heh.init" = -211;
-lam.init_alef.fina = -237;
-"@MMK_R_noonGhuna.isol" = -97;
-tehArabic.isol = -214;
-"@MMK_R_feh.isol" = -234;
-"@MMK_R_kafArabic.init" = -238;
-"@MMK_R_ta.isol" = -218;
-noon.init = -137;
-"@MMK_R_sad.isol" = -232;
-ghaf.init = -222;
-"@MMK_R_eyn.init.alt" = -253;
-lam.init_alefHamzeBelow.fina = -244;
-"@MMK_R_dotlessBeh" = -223;
-"@MMK_R_heh.isol" = -226;
-"@MMK_R_eyn.init" = -246;
-"@MMK_R_dal.isol" = -227;
-"@MMK_R_jim.init" = -236;
-"@MMK_R_jim.init.alt" = -191;
-lam.init = -174;
-"@MMK_R_yeh.isol.alt" = -156;
-};
 "@MMK_L_hyphen" = {
 V = -42;
 "@MMK_R_A" = -28;
@@ -2691,7 +2665,6 @@ V = {
 };
 "@MMK_L_period" = {
 one = -76;
-unencodedrtlglyph = -49;
 V = -76;
 "@MMK_R_w" = -65;
 "@MMK_R_period" = -58;
@@ -2725,17 +2698,6 @@ v = -98;
 "@MMK_R_O" = -33;
 "@MMK_R_hyphen" = -59;
 };
-"@MMK_L_eyn.fina.alt" = {
-"@MMK_R_jim.isol.alt" = -128;
-"@MMK_R_jim.isol" = -96;
-"@MMK_R_jim.init" = -101;
-"@MMK_R_jim.init.alt" = -75;
-"@MMK_R_eyn.init" = -26;
-"@MMK_R_yeh.isol" = -228;
-"@MMK_R_yeh.isol.alt" = -63;
-zeh.isol = -19;
-reh.isol = -103;
-};
 "@MMK_L_a" = {
 V = -24;
 "@MMK_R_O" = -19;
@@ -2758,24 +2720,11 @@ V = -32;
 "@MMK_R_T" = -54;
 "@MMK_R_W" = -11;
 };
-"@MMK_L_jim.isol.alt" = {
-"@MMK_R_mim.isol" = -7;
-tehArabic.isol = -48;
-"@MMK_R_heh.isol" = -20;
-};
 "@MMK_L_e" = {
 V = -39;
 "@MMK_R_T" = -85;
 "@MMK_R_W" = -33;
 v = -18;
-};
-"@MMK_L_eyn.isol.alt" = {
-"@MMK_R_mim.isol" = -18;
-lam.init = -35;
-noon.init = -13;
-"@MMK_R_heh.isol" = -21;
-"@MMK_R_theh.init" = -31;
-tehArabic.isol = -29;
 };
 v = {
 "@MMK_R_A" = -37;
@@ -2899,6 +2848,59 @@ tehArabic.isol = -26;
 };
 "@MMK_R_jim.isol" = {
 "@MMK_L_mim.isol" = -13;
+};
+"@MMK_R_yeh.isol.alt" = {
+"@MMK_L_mim.isol" = -229;
+"@MMK_L_sin.isol" = -221;
+"@MMK_L_theh.init" = -66;
+lam.init_alefHamzeAbove.fina = -241;
+"@MMK_L_heh.init" = -211;
+lam.init_alef.fina = -237;
+"@MMK_L_noonGhuna.isol" = -97;
+tehArabic.isol = -214;
+"@MMK_L_feh.isol" = -234;
+"@MMK_L_kafArabic.init" = -238;
+"@MMK_L_ta.isol" = -218;
+noon.init = -137;
+"@MMK_L_sad.isol" = -232;
+ghaf.init = -222;
+"@MMK_L_eyn.init.alt" = -253;
+lam.init_alefHamzeBelow.fina = -244;
+"@MMK_L_dotlessBeh" = -223;
+"@MMK_L_heh.isol" = -226;
+"@MMK_L_eyn.init" = -246;
+"@MMK_L_dal.isol" = -227;
+"@MMK_L_jim.init" = -236;
+"@MMK_L_jim.init.alt" = -191;
+lam.init = -174;
+"@MMK_L_yeh.isol.alt" = -156;
+};
+"@MMK_R_eyn.fina.alt" = {
+"@MMK_L_jim.isol.alt" = -128;
+"@MMK_L_jim.isol" = -96;
+"@MMK_L_jim.init" = -101;
+"@MMK_L_jim.init.alt" = -75;
+"@MMK_L_eyn.init" = -26;
+"@MMK_L_yeh.isol" = -228;
+"@MMK_L_yeh.isol.alt" = -63;
+zeh.isol = -19;
+reh.isol = -103;
+};
+"@MMK_R_jim.isol.alt" = {
+"@MMK_L_mim.isol" = -7;
+tehArabic.isol = -48;
+"@MMK_L_heh.isol" = -20;
+};
+"@MMK_R_eyn.isol.alt" = {
+"@MMK_L_mim.isol" = -18;
+lam.init = -35;
+noon.init = -13;
+"@MMK_L_heh.isol" = -21;
+"@MMK_L_theh.init" = -31;
+tehArabic.isol = -29;
+};
+"@MMK_R_period" = {
+unencodedrtlglyph = -49;
 };
 };
 };
