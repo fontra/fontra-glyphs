@@ -579,7 +579,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
     def _writeFontData(self, changedGlyphs=None):
         # Set self.gsFont.glyphs to an empty list temporarily, so no time is wasted on these.
-        originalGlyphs = self.gsFont.glyphs
+        originalGlyphs = list(self.gsFont.glyphs.values())
         self.gsFont.glyphs = []
         try:
             self.rawFontData = self._getRawData(self.gsFont)
@@ -610,6 +610,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self._ensureGlyphIsParsed(glyphName)
 
         gsGlyph = self.gsFont.glyphs[glyphName]
+        assert gsGlyph is not None, glyphName
 
         customData = {}
         if gsGlyph.color is not None:
@@ -710,7 +711,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
             current_type=gsGlyph.__class__, format_version=self.gsFont.format_version
         )
         p.parse_into_object(gsGlyph, rawGlyphData)
-        assert glyphIndex < len(self.gsFont.glyphs)
+        assert glyphIndex < len(self.gsFont.glyphs), len(self.gsFont.glyphs)
         self.gsFont.glyphs[glyphIndex] = gsGlyph
 
         # Load all component dependencies
