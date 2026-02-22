@@ -813,6 +813,7 @@ async def test_putFeatures(writableTestFont, featureText):
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
         # Test reading a glyph, to test we didn't mess up the internals
+        # https://github.com/fontra/fontra-glyphs/pull/125
         glyph = await writableTestFont.getGlyph("A")
         assert glyph is not None
 
