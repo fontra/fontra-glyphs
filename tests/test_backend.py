@@ -812,6 +812,9 @@ sub @c2sc_source by @c2sc_target;
 async def test_putFeatures(writableTestFont, featureText):
     async with aclosing(writableTestFont):
         await writableTestFont.putFeatures(OpenTypeFeatures(text=featureText))
+        # Test reading a glyph, to test we didn't mess up the internals
+        glyph = await writableTestFont.getGlyph("A")
+        assert glyph is not None
 
     reopened = getFileSystemBackend(writableTestFont.path)
     features = await reopened.getFeatures()
