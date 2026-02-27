@@ -433,15 +433,8 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         sourceIdentifiers = []
         valueDicts: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(dict))
 
-        defaultMasterID = get_regular_master(self.gsFont).id
-
         for gsMaster in self.gsFont.masters:
             kernDict = getattr(self.gsFont, kerningAttr, {}).get(gsMaster.id, {})
-            if not kernDict and gsMaster.id != defaultMasterID:
-                # Even if the default master does not contain kerning, it makes life
-                # easier down the road if we include this empty kerning, lest we run
-                # into "missing base master"-type interpolation errors.
-                continue
 
             sourceIdentifiers.append(gsMaster.id)
 
