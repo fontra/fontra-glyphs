@@ -37,6 +37,7 @@ glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
 expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
+propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -44,6 +45,15 @@ def sourceNameMappingFromSources(fontSources):
         source.name: sourceIdentifier
         for sourceIdentifier, source in fontSources.items()
     }
+
+
+def _getCopiedBackend(srcPath, tmpdir):
+    dstPath = tmpdir / os.path.basename(srcPath)
+    if os.path.isdir(srcPath):
+        shutil.copytree(srcPath, dstPath)
+    else:
+        shutil.copy(srcPath, dstPath)
+    return getFileSystemBackend(dstPath)
 
 
 @pytest.fixture(scope="module", params=[glyphs2Path, glyphs3Path, glyphsPackagePath])
@@ -58,26 +68,22 @@ def referenceFont(request):
 
 @pytest.fixture(params=[glyphs2Path, glyphs3Path, glyphsPackagePath])
 def writableTestFont(tmpdir, request):
-    srcPath = request.param
-    dstPath = tmpdir / os.path.basename(srcPath)
-    if os.path.isdir(srcPath):
-        shutil.copytree(srcPath, dstPath)
-    else:
-        shutil.copy(srcPath, dstPath)
-    return getFileSystemBackend(dstPath)
+    return _getCopiedBackend(request.param, tmpdir)
 
 
 @pytest.fixture
-def rtlTestFont():
-    return getFileSystemBackend(rtlFontPath)
+def rtlTestFont(tmpdir):
+    return _getCopiedBackend(rtlFontPath, tmpdir)
+
+
+@pytest.fixture
+def propagateAnchorsTestFont(tmpdir):
+    return _getCopiedBackend(propagateAnchorsFontPath, tmpdir)
 
 
 @pytest.fixture
 def writableRTLTestFont(tmpdir):
-    srcPath = rtlFontPath
-    dstPath = tmpdir / srcPath.name
-    shutil.copy(srcPath, dstPath)
-    return getFileSystemBackend(dstPath)
+    return _getCopiedBackend(rtlFontPath, tmpdir)
 
 
 expectedAxes = structure(
@@ -1693,3 +1699,36 @@ def unorderKerning(kerning):
         masterID: {left: dict(leftDict) for left, leftDict in masterKerning.items()}
         for masterID, masterKerning in kerning.items()
     }
+
+
+@pytest.mark.parametrize(
+    "glyphName, expectedHasComponentAnchor, expectedHasComponentAlignment",
+    [("aacute_aacute", True, False)],
+)
+async def test_roundtrip_component_info(
+    propagateAnchorsTestFont,
+    glyphName,
+    expectedHasComponentAnchor,
+    expectedHasComponentAlignment,
+):
+    glyphMap = await propagateAnchorsTestFont.getGlyphMap()
+    glyph = await propagateAnchorsTestFont.getGlyph(glyphName)
+
+    hasComponentAnchor, hasComponentAlignment = (
+        any(
+            f"com.glyphsapp.component.{fieldName}" in component.customData
+            for layer in glyph.layers.values()
+            for component in layer.glyph.components
+        )
+        for fieldName in ["anchor", "alignment"]
+    )
+
+    assert hasComponentAnchor == expectedHasComponentAnchor
+    assert hasComponentAlignment == expectedHasComponentAlignment
+
+    await propagateAnchorsTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
+
+    reopened = getFileSystemBackend(propagateAnchorsTestFont.path)
+    reopenedGlyph = await reopened.getGlyph(glyphName)
+
+    assert reopenedGlyph == glyph
