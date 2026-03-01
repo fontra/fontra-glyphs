@@ -37,6 +37,7 @@ glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
 expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
+propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -44,6 +45,15 @@ def sourceNameMappingFromSources(fontSources):
         source.name: sourceIdentifier
         for sourceIdentifier, source in fontSources.items()
     }
+
+
+def _getCopiedBackend(srcPath, tmpdir):
+    dstPath = tmpdir / os.path.basename(srcPath)
+    if os.path.isdir(srcPath):
+        shutil.copytree(srcPath, dstPath)
+    else:
+        shutil.copy(srcPath, dstPath)
+    return getFileSystemBackend(dstPath)
 
 
 @pytest.fixture(scope="module", params=[glyphs2Path, glyphs3Path, glyphsPackagePath])
@@ -58,13 +68,7 @@ def referenceFont(request):
 
 @pytest.fixture(params=[glyphs2Path, glyphs3Path, glyphsPackagePath])
 def writableTestFont(tmpdir, request):
-    srcPath = request.param
-    dstPath = tmpdir / os.path.basename(srcPath)
-    if os.path.isdir(srcPath):
-        shutil.copytree(srcPath, dstPath)
-    else:
-        shutil.copy(srcPath, dstPath)
-    return getFileSystemBackend(dstPath)
+    return _getCopiedBackend(request.param, tmpdir)
 
 
 @pytest.fixture
@@ -74,10 +78,7 @@ def rtlTestFont():
 
 @pytest.fixture
 def writableRTLTestFont(tmpdir):
-    srcPath = rtlFontPath
-    dstPath = tmpdir / srcPath.name
-    shutil.copy(srcPath, dstPath)
-    return getFileSystemBackend(dstPath)
+    return _getCopiedBackend(rtlFontPath, tmpdir)
 
 
 expectedAxes = structure(
