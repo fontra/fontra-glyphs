@@ -1322,11 +1322,17 @@ def gsComponentToFontraComponent(gsComponent, gsLayer, globalAxisNames):
             for name, value in gsComponent.smartComponentValues.items()
         },
     )
+
+    if gsComponent.anchor:
+        # The anchor can be false-y, but in that case, do not set it.
+        component.customData["com.glyphsapp.component.anchor"] = gsComponent.anchor
+
     if gsComponent.alignment:
         # The aligment can be 0, but in that case, do not set it.
         component.customData["com.glyphsapp.component.alignment"] = (
             gsComponent.alignment
         )
+
     return component
 
 
@@ -1557,6 +1563,8 @@ def fontraComponentToGSComponent(component):
     gsComponent.transform = GSTransform(*transformation)
     for axisName in component.location:
         gsComponent.smartComponentValues[axisName] = component.location[axisName]
+
+    gsComponent.anchor = component.customData.get("com.glyphsapp.component.anchor", "")
     gsComponent.alignment = component.customData.get(
         "com.glyphsapp.component.alignment", 0
     )
