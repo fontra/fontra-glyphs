@@ -1703,7 +1703,7 @@ def unorderKerning(kerning):
 
 @pytest.mark.parametrize(
     "glyphName, expectedHasComponentAnchor, expectedHasComponentAlignment",
-    [("aacute_aacute", True, False)],
+    [("aacute_aacute", True, False), ("brevecomb_acutecomb", False, True)],
 )
 async def test_roundtrip_component_info(
     propagateAnchorsTestFont,
