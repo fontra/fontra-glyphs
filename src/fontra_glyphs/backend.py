@@ -222,7 +222,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self,
     ) -> tuple[dict[str, list[int]], dict[str, Any], dict[str, dict[str, list[str]]]]:
         glyphMap = {}
-        glyphInfos = defaultdict(dict)
+        glyphInfos: dict[str, Any] = defaultdict(dict)
         kerningGroups: dict = defaultdict(lambda: defaultdict(list))
 
         for glyphData in self.rawGlyphsData:
