@@ -194,7 +194,7 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         self._updateGlyphNameToIndex()
         self.originalGlyphNameToIndex = dict(self.glyphNameToIndex)
         self.parsedGlyphNames: set[str] = set()
-        self.glyphMap, self.kerningGroups = self._readGlyphMapAndKerningGroups()
+        self.glyphMap, self.glyphInfos, self.kerningGroups = self._readGlyphInfos()
 
     def _loadFiles(self) -> tuple[dict[str, Any], list[Any]]:
         rawFontData = openstepPlistFromPath(self.path)
@@ -218,10 +218,11 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
             else GS_FORMAT_3_KERN_SIDES
         )
 
-    def _readGlyphMapAndKerningGroups(
+    def _readGlyphInfos(
         self,
-    ) -> tuple[dict[str, list[int]], dict[str, dict[str, list[str]]]]:
+    ) -> tuple[dict[str, list[int]], dict[str, Any], dict[str, dict[str, list[str]]]]:
         glyphMap = {}
+        glyphInfos = defaultdict(dict)
         kerningGroups: dict = defaultdict(lambda: defaultdict(list))
 
         for glyphData in self.rawGlyphsData:
@@ -246,13 +247,22 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
                 assert all(isinstance(codePoint, int) for codePoint in codePoints)
             glyphMap[glyphName] = codePoints
 
+            # extract infos
+            for gFieldName, fFieldname in [
+                ("category", "category"),
+                ("subCategory", "subcategory"),
+            ]:
+                fieldValue = glyphData.get(gFieldName)
+                if fieldValue:
+                    glyphInfos[glyphName][fFieldname] = fieldValue
+
             # extract kern groups
             for pairSide, glyphSideAttr in self._kerningSideAttrs:
                 groupName = glyphData.get(glyphSideAttr)
                 if groupName is not None:
                     kerningGroups[pairSide][groupName].append(glyphName)
 
-        return glyphMap, kerningGroups
+        return glyphMap, dict(glyphInfos), kerningGroups
 
     def _updateKerningGroups(self):
         changedGlyphs = set()
@@ -595,6 +605,9 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
         raise NotImplementedError(
             "GlyphsApp Backend: Editing CustomData is not yet implemented."
         )
+
+    async def getGlyphInfos(self) -> dict[str, Any]:
+        return deepcopy(self.glyphInfos)
 
     async def getGlyph(self, glyphName: str) -> VariableGlyph | None:
         if glyphName not in self.glyphNameToIndex:
