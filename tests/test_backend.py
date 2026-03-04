@@ -38,6 +38,7 @@ expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
+fileFormatFontPath = dataDir / "GlyphsFileFormatv3.glyphs"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -74,6 +75,11 @@ def writableTestFont(tmpdir, request):
 @pytest.fixture
 def rtlTestFont(tmpdir):
     return _getCopiedBackend(rtlFontPath, tmpdir)
+
+
+@pytest.fixture
+def fileFormatTestFont(tmpdir):
+    return _getCopiedBackend(fileFormatFontPath, tmpdir)
 
 
 @pytest.fixture
@@ -1732,3 +1738,11 @@ async def test_roundtrip_component_info(
     reopenedGlyph = await reopened.getGlyph(glyphName)
 
     assert reopenedGlyph == glyph
+
+
+async def test_getGlyphInfos(fileFormatTestFont):
+    expectedGlyphInfo = {"Smily": {"category": "Icon", "subcategory": "Emoji"}}
+
+    glyphInfo = await fileFormatTestFont.getGlyphInfos()
+
+    assert glyphInfo == expectedGlyphInfo
