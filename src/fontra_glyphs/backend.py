@@ -12,7 +12,7 @@ from typing import Any
 
 import glyphsLib
 import openstep_plist
-from fontra.backends.base import ReadableBaseBackend
+from fontra.backends.base import WritableBaseBackend
 from fontra.backends.filewatcher import Change
 from fontra.backends.watchable import WatchableBackend
 from fontra.core import kernutils
@@ -116,7 +116,7 @@ GS_FORMAT_3_KERN_SIDES = [
 invalidFeaturesUserDataKey = "xyz.fontra.invalid-features"
 
 
-class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
+class GlyphsBackend(WatchableBackend, WritableBaseBackend):
     @classmethod
     def fromPath(cls, path: PathLike) -> WritableFontBackend:
         self = cls()
@@ -660,7 +660,10 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
             storeLayerId = True
             if location in seenLocations:
-                layerName = f"{gsLayer.associatedMasterId}^{gsLayer.name}"
+                bgLayerName = (
+                    gsLayer.name if gsLayer.name else "empty-background-layer-name"
+                )
+                layerName = f"{gsLayer.associatedMasterId}^{bgLayerName}"
                 bgSeparator = "/"
             else:
                 storeLayerId = layerName != gsLayer.layerId
