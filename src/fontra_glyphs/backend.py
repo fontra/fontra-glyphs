@@ -660,7 +660,10 @@ class GlyphsBackend(WatchableBackend, ReadableBaseBackend):
 
             storeLayerId = True
             if location in seenLocations:
-                layerName = f"{gsLayer.associatedMasterId}^{gsLayer.name}"
+                bgLayerName = (
+                    gsLayer.name if gsLayer.name else "empty-background-layer-name"
+                )
+                layerName = f"{gsLayer.associatedMasterId}^{bgLayerName}"
                 bgSeparator = "/"
             else:
                 storeLayerId = layerName != gsLayer.layerId
