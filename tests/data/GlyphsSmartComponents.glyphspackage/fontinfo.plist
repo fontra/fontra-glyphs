@@ -1,0 +1,176 @@
+{
+.appVersion = "3258";
+.formatVersion = 3;
+axes = (
+{
+name = Weight;
+tag = wght;
+}
+);
+customParameters = (
+{
+name = glyphOrder;
+value = (
+.notdef,
+"uni2E8A-CN",
+"uni2E95-JP",
+"uni2E9C-CN"
+);
+}
+);
+date = "2026-03-16 05:41:39 +0000";
+familyName = Glyphs3SmartComponents;
+fontMaster = (
+{
+axesValues = (
+0
+);
+customParameters = (
+{
+name = "Master Color";
+value = (66,255);
+}
+);
+iconName = Light;
+id = UUID0;
+metricValues = (
+{
+pos = 880;
+},
+{
+pos = 700;
+},
+{
+pos = 500;
+},
+{
+},
+{
+pos = -120;
+},
+{
+}
+);
+name = ExtraLight;
+},
+{
+axesValues = (
+1000
+);
+customParameters = (
+{
+name = "Master Color";
+value = (66,255);
+}
+);
+iconName = Bold;
+id = UUID1;
+metricValues = (
+{
+pos = 880;
+},
+{
+pos = 700;
+},
+{
+pos = 500;
+},
+{
+},
+{
+pos = -120;
+},
+{
+}
+);
+name = Heavy;
+}
+);
+instances = (
+{
+axesValues = (
+0
+);
+name = ExtraLight;
+weightClass = 250;
+},
+{
+axesValues = (
+160
+);
+name = Light;
+weightClass = 300;
+},
+{
+axesValues = (
+320
+);
+name = Normal;
+weightClass = 350;
+},
+{
+axesValues = (
+390
+);
+name = Regular;
+},
+{
+axesValues = (
+560
+);
+name = Medium;
+weightClass = 500;
+},
+{
+axesValues = (
+780
+);
+name = Bold;
+weightClass = 700;
+},
+{
+axesValues = (
+1000
+);
+name = Heavy;
+weightClass = 900;
+}
+);
+metrics = (
+{
+type = ascender;
+},
+{
+type = "cap height";
+},
+{
+type = "x-height";
+},
+{
+type = baseline;
+},
+{
+type = descender;
+},
+{
+type = "italic angle";
+}
+);
+settings = {
+disablesAutomaticAlignment = 1;
+disablesNiceNames = 1;
+fontType = variable;
+previewRemoveOverlap = 0;
+};
+unitsPerEm = 1000;
+userData = {
+GSDimensionPlugin.Dimensions = {
+UUID0 = {
+};
+UUID1 = {
+};
+};
+};
+versionMajor = 1;
+versionMinor = 0;
+}

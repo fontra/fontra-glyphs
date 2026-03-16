@@ -39,6 +39,7 @@ referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
 fileFormatFontPath = dataDir / "GlyphsFileFormatv3.glyphs"
+smartComponentsFontPath = dataDir / "GlyphsSmartComponents.glyphspackage"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -90,6 +91,11 @@ def propagateAnchorsTestFont(tmpdir):
 @pytest.fixture
 def writableRTLTestFont(tmpdir):
     return _getCopiedBackend(rtlFontPath, tmpdir)
+
+
+@pytest.fixture
+def smartComponentsFont():
+    return getFileSystemBackend(smartComponentsFontPath)
 
 
 expectedAxes = structure(
@@ -193,6 +199,21 @@ async def test_getGlyph(testFont, referenceFont, glyphName):
             for component in glyph.layers[layerName].glyph.components:
                 if "com.glyphsapp.component.alignment" not in component.customData:
                     component.customData["com.glyphsapp.component.alignment"] = -1
+
+    if glyphName == "_part.shoulder":
+        # To support a different style of .glyphs/.glyphspackage files the backend
+        # now includes all smart axis values (including defaults) in non-default pole
+        # source locations. The reference font correctly stores only non-default axis
+        # values, so normalise the parsed glyph before comparing. The full locations
+        # are verified separately in test_shoulderGlyphSources.
+        glyph = deepcopy(glyph)
+        glyphAxisDefaults = {axis.name: axis.defaultValue for axis in glyph.axes}
+        for source in glyph.sources:
+            source.location = {
+                k: v
+                for k, v in source.location.items()
+                if v != glyphAxisDefaults.get(k)
+            }
 
     referenceGlyph = await referenceFont.getGlyph(glyphName)
     assert referenceGlyph == glyph
@@ -406,6 +427,11 @@ async def test_smartGlyphAddGlyphAxisWithDefaultAtMinOrMax(writableTestFont):
     glyph = await writableTestFont.getGlyph(glyphName)
     glyphAxis = GlyphAxis(name="Height", minValue=0, maxValue=100, defaultValue=100)
     glyph.axes.append(glyphAxis)
+    # Non-default (pole) layers will now include the new axis at its default value
+    # in their explicit location, so update glyph to match the roundtrip output.
+    for source in glyph.sources:
+        if source.location:
+            source.location[glyphAxis.name] = glyphAxis.defaultValue
 
     await writableTestFont.putGlyph(glyphName, glyph, [])
 
@@ -416,6 +442,7 @@ async def test_smartGlyphAddGlyphAxisWithDefaultAtMinOrMax(writableTestFont):
 async def test_smartGlyphRemoveGlyphAxis(writableTestFont):
     glyphName = "_part.shoulder"
     glyph = await writableTestFont.getGlyph(glyphName)
+    removedAxisName = glyph.axes[0].name
     del glyph.axes[0]
 
     # We expect we cannot roundtrip a glyph when removing a glyph axis,
@@ -423,6 +450,10 @@ async def test_smartGlyphRemoveGlyphAxis(writableTestFont):
     for i in [8, 5, 2]:
         del glyph.layers[glyph.sources[i].layerName]
         del glyph.sources[i]
+
+    # Remove the deleted axis from all source locations
+    for source in glyph.sources:
+        source.location.pop(removedAxisName, None)
 
     await writableTestFont.putGlyph(glyphName, glyph, [])
 
@@ -434,11 +465,18 @@ async def test_smartGlyphChangeGlyphAxisValue(writableTestFont):
     glyphName = "_part.shoulder"
     glyph = await writableTestFont.getGlyph(glyphName)
 
-    glyph.axes[1].maxValue = 200
+    changedAxis = glyph.axes[1]
+    oldMax = changedAxis.maxValue
+    changedAxis.maxValue = 200
     # We expect we cannot roundtrip a glyph when changing a glyph axis min or
     # max value without changing the default, because in GlyphsApp there is
     # no defaultValue-concept. Therefore we need to change the defaultValue as well.
-    glyph.axes[1].defaultValue = 200
+    changedAxis.defaultValue = 200
+    # Update source locations that were at the old max pole to the new max
+    for source in glyph.sources:
+        if source.location.get(changedAxis.name) == oldMax:
+            source.location[changedAxis.name] = changedAxis.maxValue
+
     await writableTestFont.putGlyph(glyphName, glyph, [])
 
     savedGlyph = await writableTestFont.getGlyph(glyphName)
@@ -1746,3 +1784,29 @@ async def test_getGlyphInfos(fileFormatTestFont):
     glyphInfo = await fileFormatTestFont.getGlyphInfos()
 
     assert glyphInfo == expectedGlyphInfo
+
+
+async def test_smartComponentPartGlyphSources(smartComponentsFont):
+    # _part.Bar_H_2x has two smart axes (Axis_0, Axis_1) and four pole layers.
+    # Regression test for bugs present up to commit #ffef2ec:
+    # (1) _getSmartLocation omitted default-value axes from non-default pole layers,
+    # (2) fixSourceLocations missed font↔smart axis correlations without locationBase.
+    # Both issues caused incomplete source locations and incorrect locationBase values.
+    glyph = await smartComponentsFont.getGlyph("_part.Bar_H_2x")
+
+    assert len(glyph.sources) == 4
+
+    # All locationBases must be None: fixSourceLocations must detect that the
+    # Weight font axis correlates with Axis_0 and clear locationBase accordingly.
+    assert all(source.locationBase is None for source in glyph.sources)
+
+    locations = [source.location for source in glyph.sources]
+
+    # Default layer: empty location
+    assert {} in locations
+    # Non-default layers: complete locations including both axes.
+    # Until commit #ffef2ec, Axis_1: 0 was absent here (only {"Axis_0": 1000} was returned).
+    assert {"Axis_0": 1000, "Axis_1": 0} in locations
+    # Until commit #ffef2ec, Axis_0: 0 was absent here (only {"Axis_1": 1000} was returned).
+    assert {"Axis_0": 0, "Axis_1": 1000} in locations
+    assert {"Axis_0": 1000, "Axis_1": 1000} in locations

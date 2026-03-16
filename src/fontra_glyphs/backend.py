@@ -696,7 +696,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                     gsLayer.background, self.axisNames, gsLayer.width, None
                 )
 
-        fixSourceLocations(sources, set(smartLocation))
+        fixSourceLocations(sources, set(smartLocation), self.locationByMasterID)
 
         glyph = VariableGlyph(
             name=glyphName,
@@ -755,10 +755,20 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
             )
             for name, poleValue in gsLayer.smartComponentPoleMapping.items()
         }
+        # If all values are at their defaults this is the main/default layer; keep
+        # it sparse so source names and other logic remain unchanged.
+        if all(
+            value == localAxesByName[name].defaultValue
+            for name, value in location.items()
+        ):
+            return {}
+        # For non-default layers include ALL smart axis values, not just the
+        # non-default ones.  This is necessary when different master layers have
+        # different pole mappings, as the variation model needs the explicit
+        # axis values to interpolate correctly.
         return {
             disambiguateLocalAxisName(name, self.axisNames): value
             for name, value in location.items()
-            if value != localAxesByName[name].defaultValue
         }
 
     def _getRawData(self, object):
@@ -1411,13 +1421,21 @@ def gsLocalAxesToFontraLocalAxes(gsGlyph):
     ]
 
 
-def fixSourceLocations(sources, smartAxisNames):
+def fixSourceLocations(sources, smartAxisNames, locationByMasterID):
     # If a set of sources is equally controlled by a font axis and a glyph axis
     # (smart axis), then the font axis should be ignored. This makes our
     # varLib-based variation model behave like Glyphs.
+
+    # Build sets using MERGED locations (including locationBase) to detect correlations
     sets = defaultdict(set)
     for i, source in enumerate(sources):
-        for locItem in source.location.items():
+        # Merge locationBase with source.location to get full location
+        mergedLocation = {}
+        if source.locationBase and source.locationBase in locationByMasterID:
+            mergedLocation = locationByMasterID[source.locationBase].copy()
+        mergedLocation.update(source.location)
+
+        for locItem in mergedLocation.items():
             sets[locItem].add(i)
 
     reverseSets = defaultdict(set)
@@ -1426,16 +1444,19 @@ def fixSourceLocations(sources, smartAxisNames):
 
     matches = [locItems for locItems in reverseSets.values() if len(locItems) > 1]
 
-    locItemsToDelete = []
+    # Find font axes that correlate with smart axes and should be removed
+    fontAxesToRemove = set()
     for locItems in matches:
-        for axis, value in locItems:
-            if axis not in smartAxisNames:
-                locItemsToDelete.append((axis, value))
+        smartAxes = {axis for axis, value in locItems if axis in smartAxisNames}
+        fontAxes = {axis for axis, value in locItems if axis not in smartAxisNames}
+        if smartAxes and fontAxes:
+            # Font axes correlate with smart axes - remove the font axes
+            fontAxesToRemove.update(fontAxes)
 
-    for axis, value in locItemsToDelete:
+    # Remove correlated font axes by clearing locationBase
+    if fontAxesToRemove:
         for source in sources:
-            if source.location.get(axis) == value:
-                del source.location[axis]
+            source.locationBase = None
 
 
 def translateGroupName(name, oldPrefix, newPrefix):

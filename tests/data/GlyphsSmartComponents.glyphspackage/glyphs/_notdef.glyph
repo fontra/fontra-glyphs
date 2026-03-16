@@ -1,0 +1,13 @@
+{
+glyphname = .notdef;
+layers = (
+{
+layerId = UUID0;
+width = 600;
+},
+{
+layerId = UUID1;
+width = 600;
+}
+);
+}
