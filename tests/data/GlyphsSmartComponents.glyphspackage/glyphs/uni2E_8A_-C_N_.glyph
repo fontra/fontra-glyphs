@@ -1,0 +1,94 @@
+{
+category = Letter;
+glyphname = "uni2E8A-CN";
+layers = (
+{
+background = {
+shapes = (
+{
+closed = 1;
+nodes = (
+(400,831,l),
+(400,-68,l),
+(429,-68,l),
+(429,375,l),
+(780,375,l),
+(780,404,l),
+(429,404,l),
+(429,831,l)
+);
+}
+);
+};
+layerId = UUID0;
+shapes = (
+{
+alignment = -1;
+piece = {
+Axis_0 = 37;
+Axis_1 = 809;
+};
+pos = (400,831);
+ref = _part.Bar_V_Serif_2x;
+},
+{
+alignment = -1;
+piece = {
+Axis_0 = 309;
+Axis_1 = 61;
+};
+pos = (416,404);
+ref = _part.Bar_H_2x;
+}
+);
+width = 1000;
+},
+{
+background = {
+shapes = (
+{
+closed = 1;
+nodes = (
+(337,850,l),
+(337,-95,l),
+(496,-95,l),
+(496,850,l)
+);
+},
+{
+closed = 1;
+nodes = (
+(429,482,l),
+(429,327,l),
+(857,327,l),
+(857,482,l)
+);
+}
+);
+};
+layerId = UUID1;
+shapes = (
+{
+alignment = -1;
+piece = {
+Axis_0 = 770;
+Axis_1 = 852;
+};
+pos = (337,850);
+ref = _part.Bar_V_Serif_2x;
+},
+{
+alignment = -1;
+piece = {
+Axis_0 = 371;
+Axis_1 = 848;
+};
+pos = (429,482);
+ref = _part.Bar_H_2x;
+}
+);
+width = 1000;
+}
+);
+script = han;
+}
