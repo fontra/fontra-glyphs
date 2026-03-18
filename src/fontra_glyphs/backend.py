@@ -702,7 +702,9 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                     gsLayer.background, self.axisNames, gsLayer.width, None
                 )
 
-        fixSourceLocations(sources, smartAxisNames, self.defaultLocation)
+        fixSmartComponentSourceLocationsFromGlyphs(
+            sources, smartAxisNames, self.defaultLocation
+        )
 
         glyph = VariableGlyph(
             name=glyphName,
@@ -848,8 +850,10 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
             # for font axis overrides added by Fontra, and we record the relevant
             # master IDs so we can ensure the expected layers exist.
             # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
-            sources, nonParticipatingMasterIDs = fixSourceLocationsForWriting(
-                variableGlyph.sources, self.defaultLocation
+            sources, nonParticipatingMasterIDs = (
+                fixSmartComponentSourceLocationsToGlyps(
+                    variableGlyph.sources, self.defaultLocation
+                )
             )
             variableGlyph = replace(variableGlyph, sources=sources)
 
@@ -1445,7 +1449,9 @@ def gsLocalAxesToFontraLocalAxes(gsGlyph):
     ]
 
 
-def fixSourceLocations(sources, smartAxisNames, defaultLocation):
+def fixSmartComponentSourceLocationsFromGlyphs(
+    sources, smartAxisNames, defaultLocation
+):
     # If a set of sources is equally controlled by a font axis and a glyph axis
     # (smart axis), then the font axis should be ignored. This makes our
     # varLib-based variation model behave like Glyphs.
@@ -1500,7 +1506,7 @@ def findNonParticipatingMasters(sources):
     return masterIDs - participatingMasterIDs
 
 
-def fixSourceLocationsForWriting(sources, defaultLocation):
+def fixSmartComponentSourceLocationsToGlyps(sources, defaultLocation):
     newSources = []
     masterIDs = set()
 
