@@ -641,9 +641,14 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         )
 
         seenLocations = []
+        smartAxisNames = set()
+
         for i, gsLayer in gsLayers:
             braceLocation = self._getBraceLayerLocation(gsLayer)
             smartLocation = self._getSmartLocation(gsLayer, localAxesByName)
+            if smartLocation and not smartAxisNames:
+                smartAxisNames = set(smartLocation)
+
             masterName = self.gsFont.masters[gsLayer.associatedMasterId].name
             if "xyz.fontra.source-name" in gsLayer.userData:
                 sourceName = gsLayer.userData["xyz.fontra.source-name"]
@@ -696,7 +701,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                     gsLayer.background, self.axisNames, gsLayer.width, None
                 )
 
-        fixSourceLocations(sources, set(smartLocation))
+        fixSourceLocations(sources, smartAxisNames)
 
         glyph = VariableGlyph(
             name=glyphName,
