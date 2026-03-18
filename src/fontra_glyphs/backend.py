@@ -186,7 +186,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         self._cachedFeatures: OpenTypeFeatures | None = None
         self._cachedGlyphClassifications: tuple[set[str], set[str]] | None = None
 
-    def _updateRawGlyphsData(self, rawGlyphsData):
+    def _updateRawGlyphsData(self, rawGlyphsData) -> None:
         # Fill the glyphs list with dummy placeholder glyphs
         self.gsFont.glyphs = [
             glyphsLib.classes.GSGlyph() for i in range(len(rawGlyphsData))
@@ -642,7 +642,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         )
 
         seenLocations = []
-        smartAxisNames = set()
+        smartAxisNames: set[str] = set()
 
         for i, gsLayer in gsLayers:
             braceLocation = self._getBraceLayerLocation(gsLayer)
