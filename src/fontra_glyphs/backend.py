@@ -1500,7 +1500,7 @@ def findNonParticipatingMasters(sources):
     return masterIDs - participatingMasterIDs
 
 
-def fixSourceLocationsForWriting(sources, fontAxisNames):
+def fixSourceLocationsForWriting(sources, defaultLocation):
     newSources = []
     masterIDs = set()
 
@@ -1510,7 +1510,7 @@ def fixSourceLocationsForWriting(sources, fontAxisNames):
         # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
         if source.locationBase is not None:
             location = {
-                k: v for k, v in source.location.items() if k not in fontAxisNames
+                k: v for k, v in source.location.items() if defaultLocation.get(k) != v
             }
             if location != source.location:
                 source = replace(source, location=location)
