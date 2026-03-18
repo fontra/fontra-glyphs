@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import re
 import shutil
 import uuid
 from contextlib import aclosing
@@ -26,6 +27,7 @@ from fontra.core.classes import (
 )
 from fontra.core.fonthandler import FontHandler
 from fontra.filesystem.projectmanager import FileSystemProjectManager
+from fontTools.ufoLib.filenames import userNameToFileName
 
 from fontra_glyphs.backend import GlyphsBackendError
 
@@ -39,6 +41,7 @@ referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
 fileFormatFontPath = dataDir / "GlyphsFileFormatv3.glyphs"
+smartComponentsFontPath = dataDir / "GlyphsSmartComponents.glyphspackage"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -90,6 +93,11 @@ def propagateAnchorsTestFont(tmpdir):
 @pytest.fixture
 def writableRTLTestFont(tmpdir):
     return _getCopiedBackend(rtlFontPath, tmpdir)
+
+
+@pytest.fixture
+def smartComponentsFont(tmpdir):
+    return _getCopiedBackend(smartComponentsFontPath, tmpdir)
 
 
 expectedAxes = structure(
@@ -1746,3 +1754,27 @@ async def test_getGlyphInfos(fileFormatTestFont):
     glyphInfo = await fileFormatTestFont.getGlyphInfos()
 
     assert glyphInfo == expectedGlyphInfo
+
+
+# We don't round-trip these
+ignoreSmartAxisPoleNamesPat = re.compile(r"\n((bottomName|topName) = .+?;\n)")
+
+
+async def test_smartComponentPartGlyphSources(smartComponentsFont):
+    glyphsPath = smartComponentsFont.path
+    glyphName = "_part.Bar_H_2x"
+    glyphPath = glyphsPath / "glyphs" / userNameToFileName(glyphName, suffix=".glyph")
+    assert glyphPath.is_file()
+
+    originalGlyphData = glyphPath.read_text()
+    originalGlyphData = ignoreSmartAxisPoleNamesPat.sub("\n", originalGlyphData)
+
+    glyph = await smartComponentsFont.getGlyph(glyphName)
+    await smartComponentsFont.putGlyph(glyphName, glyph, [])
+
+    reopenedGlyph = await smartComponentsFont.getGlyph(glyphName)
+
+    assert glyph == reopenedGlyph
+
+    reopenedGlyphData = glyphPath.read_text()
+    assert originalGlyphData == reopenedGlyphData
