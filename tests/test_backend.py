@@ -1760,9 +1760,17 @@ async def test_getGlyphInfos(fileFormatTestFont):
 ignoreSmartAxisPoleNamesPat = re.compile(r"\n((bottomName|topName) = .+?;\n)")
 
 
-async def test_smartComponentPartGlyphSources(smartComponentsFont):
+@pytest.mark.parametrize(
+    "glyphName",
+    [
+        "_part.Bar_H_2x",
+        "_part.Bar_V_Serif_2x",
+        "_part.xx_Ko_Top",
+        "_part.xx_L_Top_R_4x",
+    ],
+)
+async def test_smartComponentPartGlyphSources(smartComponentsFont, glyphName):
     glyphsPath = smartComponentsFont.path
-    glyphName = "_part.Bar_H_2x"
     glyphPath = glyphsPath / "glyphs" / userNameToFileName(glyphName, suffix=".glyph")
     assert glyphPath.is_file()
 
