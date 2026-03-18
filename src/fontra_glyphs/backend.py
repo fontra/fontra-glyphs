@@ -701,7 +701,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                     gsLayer.background, self.axisNames, gsLayer.width, None
                 )
 
-        fixSourceLocations(sources, smartAxisNames)
+        fixSourceLocations(sources, smartAxisNames, self.defaultLocation)
 
         glyph = VariableGlyph(
             name=glyphName,
@@ -1416,10 +1416,11 @@ def gsLocalAxesToFontraLocalAxes(gsGlyph):
     ]
 
 
-def fixSourceLocations(sources, smartAxisNames):
+def fixSourceLocations(sources, smartAxisNames, defaultLocation):
     # If a set of sources is equally controlled by a font axis and a glyph axis
     # (smart axis), then the font axis should be ignored. This makes our
     # varLib-based variation model behave like Glyphs.
+
     sets = defaultdict(set)
     for i, source in enumerate(sources):
         for locItem in source.location.items():
@@ -1441,6 +1442,33 @@ def fixSourceLocations(sources, smartAxisNames):
         for source in sources:
             if source.location.get(axis) == value:
                 del source.location[axis]
+
+    # Some smart component part glyphs have layers associated with non-default masters
+    # but aren't *really* associated with that non-default master. Yet they have to
+    # be there because Glyphs and glyphsLib expect to see a layer for each master.
+    # If for any master ID we can't find a layer with a *neutral* (empty) smart location,
+    # we assume this is the case, and we add the default font location to source.location
+    # while *keeping* source.locationBase (the master ID), so Fontra doesn't get
+    # confused by the original master location.
+    # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
+    nonParticipatingMasterIDs = findNonParticipatingMasters(sources)
+    for source in sources:
+        if source.locationBase in nonParticipatingMasterIDs:
+            source.location = defaultLocation | source.location
+
+
+def findNonParticipatingMasters(sources):
+    masterIDs = {
+        source.locationBase for source in sources if source.locationBase is not None
+    }
+
+    participatingMasterIDs = {
+        source.locationBase
+        for source in sources
+        if source.locationBase is not None and not source.location
+    }
+
+    return masterIDs - participatingMasterIDs
 
 
 def translateGroupName(name, oldPrefix, newPrefix):
