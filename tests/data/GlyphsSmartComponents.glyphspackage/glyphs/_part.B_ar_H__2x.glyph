@@ -1,0 +1,102 @@
+{
+color = 5;
+glyphname = _part.Bar_H_2x;
+layers = (
+{
+layerId = UUID0;
+partSelection = {
+Axis_0 = 1;
+Axis_1 = 1;
+};
+shapes = (
+{
+closed = 1;
+nodes = (
+(0,0,l),
+(0,-20,l),
+(41,-20,l),
+(41,0,l)
+);
+}
+);
+width = 1000;
+},
+{
+layerId = UUID1;
+partSelection = {
+Axis_0 = 2;
+Axis_1 = 1;
+};
+shapes = (
+{
+closed = 1;
+nodes = (
+(0,0,l),
+(0,-20,l),
+(1085,-20,l),
+(1085,0,l)
+);
+}
+);
+width = 1000;
+},
+{
+associatedMasterId = UUID0;
+layerId = "0BB99C51-133F-4FA2-95A2-35D187D9486A";
+name = 2.0_1;
+partSelection = {
+Axis_0 = 1;
+Axis_1 = 2;
+};
+shapes = (
+{
+closed = 1;
+nodes = (
+(0,0,l),
+(0,-179,l),
+(41,-179,l),
+(41,0,l)
+);
+}
+);
+width = 1000;
+},
+{
+associatedMasterId = UUID1;
+layerId = "4D3E26F9-ECCC-4C95-94D6-7E8A1C08D215";
+name = 3.1_1;
+partSelection = {
+Axis_0 = 2;
+Axis_1 = 2;
+};
+shapes = (
+{
+closed = 1;
+nodes = (
+(0,0,l),
+(0,-179,l),
+(1085,-179,l),
+(1085,0,l)
+);
+}
+);
+width = 1000;
+}
+);
+partsSettings = (
+{
+bottomName = Low;
+bottomValue = 0;
+name = Axis_0;
+topName = High;
+topValue = 1000;
+},
+{
+bottomName = Low;
+bottomValue = 0;
+name = Axis_1;
+topName = High;
+topValue = 1000;
+}
+);
+}

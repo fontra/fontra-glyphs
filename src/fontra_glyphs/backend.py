@@ -6,6 +6,7 @@ import pathlib
 import uuid
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
+from dataclasses import replace
 from os import PathLike
 from types import SimpleNamespace
 from typing import Any
@@ -185,7 +186,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         self._cachedFeatures: OpenTypeFeatures | None = None
         self._cachedGlyphClassifications: tuple[set[str], set[str]] | None = None
 
-    def _updateRawGlyphsData(self, rawGlyphsData):
+    def _updateRawGlyphsData(self, rawGlyphsData) -> None:
         # Fill the glyphs list with dummy placeholder glyphs
         self.gsFont.glyphs = [
             glyphsLib.classes.GSGlyph() for i in range(len(rawGlyphsData))
@@ -641,9 +642,14 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         )
 
         seenLocations = []
+        smartAxisNames: set[str] = set()
+
         for i, gsLayer in gsLayers:
             braceLocation = self._getBraceLayerLocation(gsLayer)
             smartLocation = self._getSmartLocation(gsLayer, localAxesByName)
+            if smartLocation and not smartAxisNames:
+                smartAxisNames = set(smartLocation)
+
             masterName = self.gsFont.masters[gsLayer.associatedMasterId].name
             if "xyz.fontra.source-name" in gsLayer.userData:
                 sourceName = gsLayer.userData["xyz.fontra.source-name"]
@@ -696,7 +702,9 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                     gsLayer.background, self.axisNames, gsLayer.width, None
                 )
 
-        fixSourceLocations(sources, set(smartLocation))
+        fixSmartComponentSourceLocationsFromGlyphs(
+            sources, smartAxisNames, self.defaultLocation
+        )
 
         glyph = VariableGlyph(
             name=glyphName,
@@ -835,6 +843,19 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
             )
 
         defaultGlyphLocation = getDefaultLocation(variableGlyph.axes)
+        nonParticipatingMasterIDs = set()
+
+        if defaultGlyphLocation:
+            # This is a smart component part glyph. We clean the source locations
+            # for font axis overrides added by Fontra, and we record the relevant
+            # master IDs so we can ensure the expected layers exist.
+            # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
+            sources, nonParticipatingMasterIDs = (
+                fixSmartComponentSourceLocationsToGlyps(
+                    variableGlyph.sources, self.defaultLocation
+                )
+            )
+            variableGlyph = replace(variableGlyph, sources=sources)
 
         gsGlyph.smartComponentAxes = setupSmartComponentAxes(variableGlyph)
 
@@ -853,7 +874,12 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
                 assert layerName in variableGlyph.layers
 
                 layerInfo = setupLayerInfo(
-                    glyphSource, sourceInfo, layerName, variableGlyph, gsGlyph
+                    glyphSource,
+                    sourceInfo,
+                    layerName,
+                    variableGlyph,
+                    gsGlyph,
+                    nonParticipatingMasterIDs,
                 )
 
                 gsLayer = getOrCreateGSLayer(gsGlyph, layerInfo.gsLayerId)
@@ -1072,15 +1098,27 @@ def getDefaultLocation(axes):
     return {axis.name: axis.defaultValue for axis in axes}
 
 
-def setupLayerInfo(glyphSource, sourceInfo, layerName, variableGlyph, gsGlyph):
+def setupLayerInfo(
+    glyphSource,
+    sourceInfo,
+    layerName,
+    variableGlyph,
+    gsGlyph,
+    nonParticipatingMasterIDs,
+):
     isMainLayer = layerName == glyphSource.layerName
     shouldStoreFontraSourceName = glyphSource.name != sourceInfo.associatedMasterName
     shouldStoreFontraLayerName = True
 
     if isMainLayer:
         if sourceInfo.isSmartComponentLayer:
+            suggestedLayerId = None
+            if sourceInfo.masterId in nonParticipatingMasterIDs:
+                suggestedLayerId = sourceInfo.masterId
+                nonParticipatingMasterIDs.remove(sourceInfo.masterId)
+
             gsLayerName = glyphSource.name
-            gsLayerId = getLayerId(variableGlyph, layerName, None)
+            gsLayerId = getLayerId(variableGlyph, layerName, suggestedLayerId)
         else:
             gsLayerId = getLayerId(variableGlyph, layerName, sourceInfo.masterId)
             gsLayerName = (
@@ -1411,10 +1449,13 @@ def gsLocalAxesToFontraLocalAxes(gsGlyph):
     ]
 
 
-def fixSourceLocations(sources, smartAxisNames):
+def fixSmartComponentSourceLocationsFromGlyphs(
+    sources, smartAxisNames, defaultLocation
+):
     # If a set of sources is equally controlled by a font axis and a glyph axis
     # (smart axis), then the font axis should be ignored. This makes our
     # varLib-based variation model behave like Glyphs.
+
     sets = defaultdict(set)
     for i, source in enumerate(sources):
         for locItem in source.location.items():
@@ -1436,6 +1477,54 @@ def fixSourceLocations(sources, smartAxisNames):
         for source in sources:
             if source.location.get(axis) == value:
                 del source.location[axis]
+
+    # Some smart component part glyphs have layers associated with non-default masters
+    # but aren't *really* associated with that non-default master. Yet they have to
+    # be there because Glyphs and glyphsLib expect to see a layer for each master.
+    # If for any master ID we can't find a layer with a *neutral* (empty) smart location,
+    # we assume this is the case, and we add the default font location to source.location
+    # while *keeping* source.locationBase (the master ID), so Fontra doesn't get
+    # confused by the original master location.
+    # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
+    nonParticipatingMasterIDs = findNonParticipatingMasters(sources)
+    for source in sources:
+        if source.locationBase in nonParticipatingMasterIDs:
+            source.location = defaultLocation | source.location
+
+
+def findNonParticipatingMasters(sources):
+    masterIDs = {
+        source.locationBase for source in sources if source.locationBase is not None
+    }
+
+    participatingMasterIDs = {
+        source.locationBase
+        for source in sources
+        if source.locationBase is not None and not source.location
+    }
+
+    return masterIDs - participatingMasterIDs
+
+
+def fixSmartComponentSourceLocationsToGlyps(sources, defaultLocation):
+    newSources = []
+    masterIDs = set()
+
+    for source in sources:
+        # Filter out axes values that were added by Fontra to make sure we ignore
+        # the master's actual location.
+        # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
+        if source.locationBase is not None:
+            location = {
+                k: v for k, v in source.location.items() if defaultLocation.get(k) != v
+            }
+            if location != source.location:
+                source = replace(source, location=location)
+                if source.locationBase is not None:
+                    masterIDs.add(source.locationBase)
+        newSources.append(source)
+
+    return newSources, masterIDs
 
 
 def translateGroupName(name, oldPrefix, newPrefix):
