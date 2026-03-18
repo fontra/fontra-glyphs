@@ -841,6 +841,7 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
             )
 
         defaultGlyphLocation = getDefaultLocation(variableGlyph.axes)
+        nonParticipatingMasterIDs = set()
 
         if defaultGlyphLocation:
             # This is a smart component part glyph. We clean the source locations
@@ -1507,11 +1508,14 @@ def fixSourceLocationsForWriting(sources, fontAxisNames):
         # Filter out axes values that were added by Fontra to make sure we ignore
         # the master's actual location.
         # See https://github.com/fontra/fontra-glyphs/pull/133 for discussion.
-        location = {k: v for k, v in source.location.items() if k not in fontAxisNames}
-        if location != source.location:
-            source = replace(source, location=location)
-            if source.locationBase is not None:
-                masterIDs.add(source.locationBase)
+        if source.locationBase is not None:
+            location = {
+                k: v for k, v in source.location.items() if k not in fontAxisNames
+            }
+            if location != source.location:
+                source = replace(source, location=location)
+                if source.locationBase is not None:
+                    masterIDs.add(source.locationBase)
         newSources.append(source)
 
     return newSources, masterIDs
