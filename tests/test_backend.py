@@ -42,6 +42,7 @@ rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
 fileFormatFontPath = dataDir / "GlyphsFileFormatv3.glyphs"
 smartComponentsFontPath = dataDir / "GlyphsSmartComponents.glyphspackage"
+smartComponentsReferenceFontPath = dataDir / "GlyphsSmartComponents.fontra"
 
 
 def sourceNameMappingFromSources(fontSources):
@@ -98,6 +99,11 @@ def writableRTLTestFont(tmpdir):
 @pytest.fixture
 def smartComponentsFont(tmpdir):
     return _getCopiedBackend(smartComponentsFontPath, tmpdir)
+
+
+@pytest.fixture
+def smartComponentsReferenceFont():
+    return getFileSystemBackend(smartComponentsReferenceFontPath)
 
 
 expectedAxes = structure(
@@ -1786,3 +1792,16 @@ async def test_smartComponentPartGlyphSources(smartComponentsFont, glyphName):
 
     reopenedGlyphData = glyphPath.read_text()
     assert originalGlyphData == reopenedGlyphData
+
+
+async def test_smartComponent_compare_reference(
+    smartComponentsFont, smartComponentsReferenceFont
+):
+    glyphMap = await smartComponentsFont.getGlyphMap()
+    referenceGlyphMap = await smartComponentsReferenceFont.getGlyphMap()
+    assert glyphMap == referenceGlyphMap
+
+    for glyphName in glyphMap:
+        glyph = await smartComponentsFont.getGlyph(glyphName)
+        referenceGlyph = await smartComponentsReferenceFont.getGlyph(glyphName)
+        assert glyph == referenceGlyph
