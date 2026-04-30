@@ -10,6 +10,17 @@ on:
     branches: [main]
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files --verbose --show-diff-on-failure
+
   build:
     runs-on: ${{ matrix.os }}
 
@@ -32,11 +43,6 @@ jobs:
           python -m pip install . --no-deps
           python -m pip install -r requirements.txt
           python -m pip install -r requirements-dev.txt
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-        with:
-          extra_args: --all-files --verbose --show-diff-on-failure
 
       - name: Test with pytest
         run: |
