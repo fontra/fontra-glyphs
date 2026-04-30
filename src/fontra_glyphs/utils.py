@@ -2,7 +2,7 @@ import openstep_plist
 
 
 def openstepPlistFromPath(path):
-    with open(path, "r") as fp:
+    with open(path, "r", encoding="utf-8") as fp:
         obj = openstep_plist.load(fp, use_numbers=True)
     return obj
 
