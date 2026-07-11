@@ -703,15 +703,18 @@ async def test_addGuideline(writableTestFont):
     )
     glyph.layers[layerName] = Layer(glyph=StaticGlyph(xAdvance=0))
     glyph.layers[layerName].glyph.guidelines.append(Guideline(name="top", x=207, y=746))
+    glyph.layers[layerName].glyph.guidelines.append(
+        Guideline(name="bottom", x=207, y=0, locked=True)
+    )
 
     await writableTestFont.putGlyph(glyphName, glyph, glyphMap[glyphName])
 
     savedGlyph = await writableTestFont.getGlyph(glyphName)
+    savedGuidelines = savedGlyph.layers[layerName].glyph.guidelines
 
-    assert (
-        glyph.layers[layerName].glyph.guidelines
-        == savedGlyph.layers[layerName].glyph.guidelines
-    )
+    assert glyph.layers[layerName].glyph.guidelines == savedGuidelines
+    assert savedGuidelines[0].locked is False
+    assert savedGuidelines[1].locked is True
 
 
 async def test_getKerning(testFont, referenceFont):

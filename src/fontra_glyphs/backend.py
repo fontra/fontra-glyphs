@@ -1413,7 +1413,7 @@ def gsGuidelineToFontraGuideline(gsGuideline):
         y=gsGuideline.position.y,
         angle=gsGuideline.angle,
         name=gsGuideline.name,
-        locked=gsGuideline.locked,
+        locked=bool(gsGuideline.locked),
     )
 
 
@@ -1695,7 +1695,7 @@ def fontraGuidelineToGSGuide(guideline):
     gsGuide.position.x = guideline.x
     gsGuide.position.y = guideline.y
     gsGuide.angle = guideline.angle
-    gsGuide.locked = guideline.locked
+    gsGuide.locked = 1 if guideline.locked else 0
     return gsGuide
 
 
