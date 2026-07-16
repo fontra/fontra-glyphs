@@ -805,9 +805,16 @@ async def test_getFeatures(testFont, referenceFont):
     assert await testFont.getFeatures() == await referenceFont.getFeatures()
 
 
+expectedExternalFeatureFileFragment = """feature c2sc {
+    sub A by A.sc;
+    sub V by V.sc;
+} c2sc;"""
+
+
 async def test_getFeatures_externalFeatureFile(externalFeaturesFileFont):
     features = await externalFeaturesFileFont.getFeatures()
-    assert features.text == "----"
+
+    assert expectedExternalFeatureFileFragment in features.text
 
 
 async def test_getFeatures_with_expansion():
