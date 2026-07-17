@@ -1,0 +1,278 @@
+{
+.appVersion = "3436";
+.formatVersion = 3;
+axes = (
+{
+name = Width;
+tag = wdth;
+}
+);
+date = "2026-07-15 12:20:55 +0000";
+familyName = "Included Feature Test";
+featurePrefixes = (
+{
+automatic = 1;
+code = "languagesystem DFLT dflt;
+";
+name = Languagesystems;
+},
+{
+code = "include(ExternalFeatureFile.fea);
+";
+name = include;
+}
+);
+fontMaster = (
+{
+axesValues = (
+0
+);
+iconName = Condensed;
+id = "581DB7E0-FC21-4209-BE03-D0C94544834E";
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+},
+{
+over = 0;
+}
+);
+name = Narrow;
+},
+{
+axesValues = (
+1000
+);
+iconName = Extended;
+id = m01;
+metricValues = (
+{
+over = 16;
+pos = 800;
+},
+{
+over = 16;
+pos = 700;
+},
+{
+over = 16;
+pos = 500;
+},
+{
+over = -16;
+},
+{
+over = -16;
+pos = -200;
+},
+{
+over = 0;
+}
+);
+name = Wide;
+}
+);
+glyphs = (
+{
+glyphname = A;
+layers = (
+{
+layerId = m01;
+shapes = (
+{
+closed = 1;
+nodes = (
+(557,720,l),
+(1105,0,l),
+(10,0,l)
+);
+}
+);
+width = 1115;
+},
+{
+layerId = "581DB7E0-FC21-4209-BE03-D0C94544834E";
+shapes = (
+{
+closed = 1;
+nodes = (
+(175,720,l),
+(323,0,l),
+(28,0,l)
+);
+}
+);
+width = 351;
+}
+);
+unicode = 65;
+},
+{
+glyphname = V;
+layers = (
+{
+layerId = m01;
+shapes = (
+{
+closed = 1;
+nodes = (
+(1105,700,l),
+(10,700,l),
+(558,-20,l)
+);
+}
+);
+width = 1115;
+},
+{
+layerId = "581DB7E0-FC21-4209-BE03-D0C94544834E";
+shapes = (
+{
+closed = 1;
+nodes = (
+(323,700,l),
+(28,700,l),
+(176,-20,l)
+);
+}
+);
+width = 351;
+}
+);
+unicode = 86;
+},
+{
+glyphname = A.sc;
+layers = (
+{
+layerId = m01;
+shapes = (
+{
+closed = 1;
+nodes = (
+(557,510,l),
+(1075,0,l),
+(40,0,l)
+);
+}
+);
+width = 1115;
+},
+{
+layerId = "581DB7E0-FC21-4209-BE03-D0C94544834E";
+shapes = (
+{
+closed = 1;
+nodes = (
+(175,520,l),
+(323,0,l),
+(28,0,l)
+);
+}
+);
+width = 351;
+}
+);
+},
+{
+glyphname = V.sc;
+kernLeft = V;
+kernRight = V;
+layers = (
+{
+layerId = m01;
+shapes = (
+{
+closed = 1;
+nodes = (
+(1075,500,l),
+(40,500,l),
+(558,-10,l)
+);
+}
+);
+width = 1115;
+},
+{
+layerId = "581DB7E0-FC21-4209-BE03-D0C94544834E";
+shapes = (
+{
+closed = 1;
+nodes = (
+(323,500,l),
+(28,500,l),
+(176,-20,l)
+);
+}
+);
+width = 351;
+}
+);
+}
+);
+instances = (
+{
+axesValues = (
+0
+);
+instanceInterpolations = {
+"581DB7E0-FC21-4209-BE03-D0C94544834E" = 1;
+};
+name = Narrow;
+widthClass = 1;
+},
+{
+axesValues = (
+1000
+);
+instanceInterpolations = {
+m01 = 1;
+};
+name = Wide;
+widthClass = 9;
+}
+);
+kerningLTR = {
+};
+metrics = (
+{
+type = ascender;
+},
+{
+type = "cap height";
+},
+{
+type = "x-height";
+},
+{
+type = baseline;
+},
+{
+type = descender;
+},
+{
+type = "italic angle";
+}
+);
+stems = (
+);
+unitsPerEm = 1000;
+versionMajor = 1;
+versionMinor = 0;
+}

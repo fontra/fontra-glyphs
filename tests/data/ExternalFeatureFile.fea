@@ -1,0 +1,4 @@
+feature c2sc {
+	sub A by A.sc;
+	sub V by V.sc;
+} c2sc;

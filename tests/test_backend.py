@@ -37,6 +37,7 @@ glyphs2Path = dataDir / "GlyphsUnitTestSans.glyphs"
 glyphs3Path = dataDir / "GlyphsUnitTestSans3.glyphs"
 glyphsPackagePath = dataDir / "GlyphsUnitTestSans3.glyphspackage"
 expansionFontPath = dataDir / "FeatureExpansionTest.glyphs"
+externalFeaturesFilePath = dataDir / "ExternalFeatureFile.glyphs"
 referenceFontPath = dataDir / "GlyphsUnitTestSans3.fontra"
 rtlFontPath = dataDir / "right-to-left-kerning.glyphs"
 propagateAnchorsFontPath = dataDir / "PropagateAnchorsTest.glyphs"
@@ -64,6 +65,11 @@ def _getCopiedBackend(srcPath, tmpdir):
 @pytest.fixture(scope="module", params=[glyphs2Path, glyphs3Path, glyphsPackagePath])
 def testFont(request):
     return getFileSystemBackend(request.param)
+
+
+@pytest.fixture
+def externalFeaturesFileFont():
+    return getFileSystemBackend(externalFeaturesFilePath)
 
 
 @pytest.fixture(scope="module")
@@ -797,6 +803,18 @@ async def test_putKerning_master_order(tmpdir):
 
 async def test_getFeatures(testFont, referenceFont):
     assert await testFont.getFeatures() == await referenceFont.getFeatures()
+
+
+expectedExternalFeatureFileFragment = """feature c2sc {
+    sub A by A.sc;
+    sub V by V.sc;
+} c2sc;"""
+
+
+async def test_getFeatures_externalFeatureFile(externalFeaturesFileFont):
+    features = await externalFeaturesFileFont.getFeatures()
+
+    assert expectedExternalFeatureFileFragment in features.text
 
 
 async def test_getFeatures_with_expansion():

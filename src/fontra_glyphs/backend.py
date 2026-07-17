@@ -47,7 +47,7 @@ from fontra.core.varutils import (
     mapAxesFromUserSpaceToSourceSpace,
 )
 from fontTools.designspaceLib import DesignSpaceDocument
-from fontTools.feaLib.error import FeatureLibError
+from fontTools.feaLib.error import FeatureLibError, IncludedFeaNotFound
 from fontTools.feaLib.parser import Parser as FeatureParser
 from fontTools.misc.transform import DecomposedTransform
 from fontTools.ufoLib.filenames import userNameToFileName
@@ -1701,15 +1701,21 @@ def fontraGuidelineToGSGuide(guideline):
 
 def canParseFeatures(featureText, glyphNames):
     featureFile = io.StringIO(featureText)
-    fea_parser = FeatureParser(
-        featureFile,
-        glyphNames=glyphNames,
-        includeDir=None,
-    )
+
+    try:
+        fea_parser = FeatureParser(
+            featureFile,
+            glyphNames=glyphNames,
+            includeDir=None,
+        )
+    except IncludedFeaNotFound:
+        return False
+
     try:
         _ = fea_parser.parse()
     except FeatureLibError:
         return False
+
     return True
 
 
