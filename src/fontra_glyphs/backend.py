@@ -15,6 +15,7 @@ import glyphsLib
 import openstep_plist
 from fontra.backends.base import WritableBaseBackend
 from fontra.backends.filewatcher import Change
+from fontra.backends.includedfeaturefiles import extractIncludedFeatureFiles
 from fontra.backends.watchable import WatchableBackend
 from fontra.core import kernutils
 from fontra.core.classes import (
@@ -124,9 +125,10 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         self._setupFromPath(path)
         return self
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._writeLock = asyncio.Lock()
+        self._includedFeaturePaths: list[pathlib.Path] = []
 
     def _setupFromPath(self, path: PathLike) -> None:
         self.path = pathlib.Path(path)
@@ -540,6 +542,12 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
             return OpenTypeFeatures(text=invalidFeatures)
 
         featureText = glyphsLib.builder.features._to_ufo_features(self.gsFont)
+
+        self._includedFeaturePaths = extractIncludedFeatureFiles(
+            featureText, self.path.parent
+        )
+        self._updatePathsToWatch()
+
         if not canParseFeatures(featureText, self.glyphNameToIndex.keys()):
             expandedFeatures = await runInSubProcess(expensiveGetFeatures, self.path)
             if expandedFeatures:
@@ -1017,13 +1025,27 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
         return sorted(usedBy)
 
     def fileWatcherWasInstalled(self):
-        self.fileWatcher.setPaths([self.path])
+        self._updatePathsToWatch()
+
+    def _updatePathsToWatch(self):
+        if self.fileWatcher is not None:
+            self.fileWatcher.setPaths([self.path, *self._includedFeaturePaths])
 
     async def fileWatcherProcessChanges(
         self, changes: set[tuple[Change, str]]
     ) -> dict[str, Any] | None:
         reloadPattern: dict[str, Any] = {}
         glyphChanges = set()
+
+        featuresChanged = False
+        for change, path in changes:
+            if path.endswith(".fea"):
+                featuresChanged = True
+
+        if featuresChanged and len(changes) == 1:
+            self._cachedFeatures = None
+            reloadPattern["features"] = None
+            return reloadPattern
 
         rawFontData, rawGlyphsData = self._loadFiles()
 
@@ -1066,6 +1088,10 @@ class GlyphsBackend(WatchableBackend, WritableBaseBackend):
 
             if glyphChanges or glyphMapChanged:
                 self._updateRawGlyphsData(rawGlyphsData)
+
+            if featuresChanged:
+                self._cachedFeatures = None
+                reloadPattern["features"] = None
 
         return reloadPattern
 
