@@ -53,12 +53,17 @@ def sourceNameMappingFromSources(fontSources):
     }
 
 
-def _getCopiedBackend(srcPath, tmpdir):
+def _getCopiedBackend(srcPath, tmpdir, copyFeaFiles=False):
     dstPath = tmpdir / os.path.basename(srcPath)
     if os.path.isdir(srcPath):
         shutil.copytree(srcPath, dstPath)
     else:
         shutil.copy(srcPath, dstPath)
+
+    if copyFeaFiles:
+        for feaPath in srcPath.parent.glob("*.fea"):
+            shutil.copy(feaPath, tmpdir / feaPath.name)
+
     return getFileSystemBackend(dstPath)
 
 
@@ -68,8 +73,8 @@ def testFont(request):
 
 
 @pytest.fixture
-def externalFeaturesFileFont():
-    return getFileSystemBackend(externalFeaturesFilePath)
+def externalFeaturesFileFont(tmpdir):
+    return _getCopiedBackend(externalFeaturesFilePath, tmpdir, True)
 
 
 @pytest.fixture(scope="module")
@@ -1090,6 +1095,25 @@ async def test_externalChanges_putFeatures(writableTestFont):
 
         listenerFeatures = await listenerHandler.getFeatures()
         assert features == listenerFeatures
+
+
+async def test_externalChanges_includedFeatureFile(externalFeaturesFileFont):
+    listenerFont = getFileSystemBackend(externalFeaturesFileFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
+
+        featureFilePath = (
+            externalFeaturesFileFont.path.parent / "ExternalFeatureFile.fea"
+        )
+        assert featureFilePath.is_file()
+        featureFilePath.write_text("# dummy comment\n")
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerFeatures = await listenerHandler.getFeatures()
+        assert "dummy comment" in listenerFeatures.text
 
 
 async def test_deleteUnknownGlyph(writableTestFont):
