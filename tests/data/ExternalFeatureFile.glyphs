@@ -11,15 +11,15 @@ date = "2026-07-15 12:20:55 +0000";
 familyName = "Included Feature Test";
 featurePrefixes = (
 {
-code = "include(ExternalFeatureFile.fea);
-";
-name = include;
-},
-{
 automatic = 1;
 code = "languagesystem DFLT dflt;
 ";
 name = Languagesystems;
+},
+{
+code = "include(ExternalFeatureFile.fea);
+";
+name = include;
 }
 );
 fontMaster = (
