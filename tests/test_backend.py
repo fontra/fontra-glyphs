@@ -1097,6 +1097,25 @@ async def test_externalChanges_putFeatures(writableTestFont):
         assert features == listenerFeatures
 
 
+async def test_externalChanges_includedFeatureFile(externalFeaturesFileFont):
+    listenerFont = getFileSystemBackend(externalFeaturesFileFont.path)
+    listenerHandler = await setupFontHandler(listenerFont)
+
+    async with aclosing(listenerHandler):
+        listenerFeatures = await listenerHandler.getFeatures()  # load in cache
+
+        featureFilePath = (
+            externalFeaturesFileFont.path.parent / "ExternalFeatureFile.fea"
+        )
+        assert featureFilePath.is_file()
+        featureFilePath.write_text("# dummy comment\n")
+
+        await asyncio.sleep(0.15)  # give the file watcher a moment to catch up
+
+        listenerFeatures = await listenerHandler.getFeatures()
+        assert "dummy comment" in listenerFeatures.text
+
+
 async def test_deleteUnknownGlyph(writableTestFont):
     glyphName = "A.doesnotexist"
     glyphMap = await writableTestFont.getGlyphMap()
