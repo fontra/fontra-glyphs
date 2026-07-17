@@ -53,12 +53,17 @@ def sourceNameMappingFromSources(fontSources):
     }
 
 
-def _getCopiedBackend(srcPath, tmpdir):
+def _getCopiedBackend(srcPath, tmpdir, copyFeaFiles=False):
     dstPath = tmpdir / os.path.basename(srcPath)
     if os.path.isdir(srcPath):
         shutil.copytree(srcPath, dstPath)
     else:
         shutil.copy(srcPath, dstPath)
+
+    if copyFeaFiles:
+        for feaPath in srcPath.parent.glob("*.fea"):
+            shutil.copy(feaPath, tmpdir / feaPath.name)
+
     return getFileSystemBackend(dstPath)
 
 
@@ -68,8 +73,8 @@ def testFont(request):
 
 
 @pytest.fixture
-def externalFeaturesFileFont():
-    return getFileSystemBackend(externalFeaturesFilePath)
+def externalFeaturesFileFont(tmpdir):
+    return _getCopiedBackend(externalFeaturesFilePath, tmpdir, True)
 
 
 @pytest.fixture(scope="module")
