@@ -1754,6 +1754,8 @@ expandedFeaturesWarning = """\
 # 1. "include" statements have been expanded, and have been replaced by the *contents*
 #    of the included file(s)
 # 2. Glyphs-specific dynamic "token" syntax has been expanded to standard .fea syntax
+# 3. Glyphs-style feature variation syntax has been converted to the syntax that
+#    fonttools, fontmake and fontc support.
 #
 # Editing the feature code in Fontra will write the *modified* code back to the .glyphs
 # or .glyphspackage file, destroying the original features code.
