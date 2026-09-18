@@ -1650,11 +1650,7 @@ def setupPoleMapping(glyphAxes, location):
             raise NotImplementedError(
                 "Intermediate layers within smart glyphs are not yet implemented"
             )
-        pole = (
-            int(Pole.MIN)  # convert to int for Python <= 3.10
-            if axis.minValue == axisValue
-            else int(Pole.MAX)  # convert to int for Python <= 3.10
-        )
+        pole = int(Pole.MIN) if axis.minValue == axisValue else int(Pole.MAX)
         # Set pole, only MIN or MAX possible.
         # NOTE: In GlyphsApp these are checkboxes, either: on or off.
         smartComponentPoleMapping[axis.name] = pole
